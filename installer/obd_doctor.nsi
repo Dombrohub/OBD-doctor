@@ -12,7 +12,7 @@ Unicode true
 SetCompressor /SOLID lzma
 
 !define APP_NAME      "OBD EFT"
-!define APP_VERSION   "1.11.0"
+!define APP_VERSION   "1.11.1"
 !define APP_PUBLISHER "OBD EFT"
 !define APP_EXE       "OBDEFT.exe"
 !define CLI_EXE       "obd-eft-cli.exe"
@@ -85,8 +85,28 @@ Tip: choose 'demo' as the adapter to try it without a car."
 !insertmacro MUI_LANGUAGE "English"
 
 ; ---- sections
+; Close OBD EFT (and the old "OBD Doctor") if it's still running, so its files can be replaced
+Function CloseRunningApp
+  nsExec::ExecToStack 'cmd /c tasklist /FI "IMAGENAME eq ${APP_EXE}" /NH | find /I "${APP_EXE}"'
+  Pop $0
+  Pop $1
+  ${If} $0 == 0
+    ${IfNot} ${Silent}
+      MessageBox MB_OKCANCEL|MB_ICONEXCLAMATION "${APP_NAME} is still running.$\r$\n$\r$\nClick OK to close it and continue installing, or Cancel to stop." IDOK close_it
+      Abort
+    ${EndIf}
+    close_it:
+  ${EndIf}
+  nsExec::Exec 'taskkill /F /IM ${APP_EXE}'
+  nsExec::Exec 'taskkill /F /IM ${CLI_EXE}'
+  nsExec::Exec 'taskkill /F /IM OBDDoctor.exe'
+  nsExec::Exec 'taskkill /F /IM obd-doctor-cli.exe'
+  Sleep 1000
+FunctionEnd
+
 Section "${APP_NAME} (required)" SecMain
   SectionIn RO
+  Call CloseRunningApp
   SetOutPath "$INSTDIR"
   ; App folder: both programs plus the shared _internal runtime folder
   RMDir /r "$INSTDIR\_internal"  ; clear the old runtime on upgrade
@@ -171,6 +191,9 @@ Function un.onInit
 FunctionEnd
 
 Section "Uninstall"
+  nsExec::Exec 'taskkill /F /IM ${APP_EXE}'
+  nsExec::Exec 'taskkill /F /IM ${CLI_EXE}'
+  Sleep 1000
   Delete "$INSTDIR\${APP_EXE}"
   Delete "$INSTDIR\${CLI_EXE}"
   RMDir /r "$INSTDIR\_internal"
