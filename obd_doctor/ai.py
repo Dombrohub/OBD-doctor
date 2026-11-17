@@ -130,6 +130,17 @@ def build_scan_summary(scan: dict, findings, vehicle: str = "", symptoms: str = 
             codes = ", ".join(f"{d['code']} ({'/'.join(d['status']) or 'stored'})" for d in m["dtcs"]) or "no codes"
             lines.append(f"- {m['label']}: {codes}")
 
+    tests = scan.get("tests") or []
+    if tests:
+        from .monitor_tests import misfire_counts
+        failed = [t for t in tests if not t["passed"] and not 0xA1 <= t["mid"] <= 0xAD]
+        lines.append("\nSELF-TEST RESULTS (OBD Mode 6)")
+        lines.append(f"- {len(tests)} results, {len(failed)} outside limits")
+        for t in failed:
+            lines.append(f"- FAILED: {t['monitor']} / {t['test']}: {t['value']} {t['unit']} (limits {t['min']} to {t['max']})")
+        counts = misfire_counts(tests)
+        if counts:
+            lines.append("- Misfire counts by cylinder: " + ", ".join(f"cyl {cyl}: {n}" for cyl, n in sorted(counts.items())))
     hist = scan.get("history")
     if hist:
         lines.append(f"\nCHANGES SINCE THE LAST SCAN OF THIS VEHICLE ({hist['previous_time']}, "

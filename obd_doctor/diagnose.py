@@ -244,6 +244,41 @@ def diagnose(scan: dict) -> list[Finding]:
                          [], ["Run the full module search on the ABS & airbag tab (takes about a minute)",
                               mods.get("note", "")]))
 
+    # ------------------------------------------------------------------ self-test results (service $06)
+    from .monitor_tests import misfire_counts
+    tests = scan.get("tests") or []
+    counts = misfire_counts(tests)
+    total = sum(counts.values())
+    if total:
+        top_cyl, top = max(counts.items(), key=lambda kv: kv[1])
+        listing = ", ".join(f"cylinder {c}: {n}" for c, n in sorted(counts.items()) if n)
+        steps = ["Swap that cylinder's ignition coil with a neighbouring one, clear the counts by driving, and see "
+                 "whether the misfires move with the coil"] if top >= 0.6 * total else \
+                ["Misfires spread over several cylinders point to a shared cause (fuel, vacuum leak, spark plugs)"]
+        f.append(Finding("high" if misfires else "medium",
+                         f"Misfires counted by cylinder - most on cylinder {top_cyl}" if top >= 0.6 * total
+                         else "Misfires counted on several cylinders",
+                         f"The engine computer's own misfire counter shows: {listing}. This pinpoints where misfires "
+                         "happen, even before a misfire code is set.",
+                         [f"Spark plug, ignition coil or injector on cylinder {top_cyl}"] if top >= 0.6 * total else [],
+                         steps, sorted(misfires)))
+    hints = {"EVAP": "Check the fuel cap seal first, then the EVAP hoses and purge/vent valves",
+             "Catalyst": "Fix any misfire or fuel-mixture problem first; the catalyst may be wearing out",
+             "O2 sensor heater": "The O2 sensor heater may be failing (sensor replacement usually fixes it)",
+             "O2 sensor": "The O2 sensor may be slow or ageing; an exhaust leak near it can also cause this",
+             "EGR": "Carbon build-up in the EGR valve or passages is common",
+             "Fuel system": "See the fuel trim findings - usually a vacuum leak, MAF or fuel pressure issue"}
+    for t in tests:
+        if t["passed"] or 0xA1 <= t["mid"] <= 0xAD:
+            continue
+        hint = next((h for k, h in hints.items() if t["monitor"].startswith(k)), None)
+        measured = f"{t['value']} {t['unit']}".strip()
+        f.append(Finding("medium", f"Self-test failed: {t['monitor']}",
+                         f"The car's own self-test ({t['monitor']}) measured {measured}, "
+                         f"outside its limits of {t['min']} to {t['max']}. A trouble code usually follows if it "
+                         "fails again, so this is an early warning.",
+                         [hint] if hint else [], []))
+
     # ------------------------------------------------------------------ live data rules
     rpm = live.get(0x0C)
     running = rpm is not None and rpm > 400

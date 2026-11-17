@@ -132,6 +132,26 @@ def print_report(scan, findings):
         for pid, v in ff["data"].items():
             print(f"  {decoder.PIDS[pid][0]:<32} {fmt_value(pid, v)}")
 
+    tests = scan.get("tests") or []
+    if tests:
+        from .monitor_tests import misfire_counts
+        header("SELF-TEST RESULTS (OBD Mode 6)")
+        for t in tests:
+            if 0xA1 <= t["mid"] <= 0xAD:
+                continue  # misfire counters are summarised below
+            mark = c("PASS", "green") if t["passed"] else c("FAIL", "high")
+            val = f"{t['value']} {t['unit']}".strip()
+            print(f"  {mark}  {t['monitor']:<34} {t['test']:<34} {val}  (limits {t['min']} to {t['max']})")
+        counts = misfire_counts(tests)
+        if counts:
+            print("  Misfire counts: " + ", ".join(f"cylinder {cyl}: {n}" for cyl, n in sorted(counts.items())))
+    info = scan.get("ecu_info") or {}
+    if info:
+        header("COMPUTERS")
+        for ecu, d in info.items():
+            print(f"  {ecu}: {d.get('name', '')}  calibration {', '.join(d.get('calibration_ids', [])) or '-'}"
+                  f"  checksum {', '.join(d.get('checksums', [])) or '-'}")
+
     if scan["live"]:
         header("LIVE DATA")
         for pid, v in scan["live"].items():

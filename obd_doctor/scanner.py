@@ -7,6 +7,7 @@ import time
 from . import decoder
 from .elm327 import ELM327, ecu_name, ecu_sort_key
 from .modules import ModuleScanner, merge_into_dtcs
+from . import monitor_tests
 
 
 class Scanner:
@@ -93,6 +94,45 @@ class Scanner:
                     break
         return {"trigger_dtc": trigger, "data": data}
 
+    # ---- on-board monitor test results (service $06, CAN cars)
+    def read_monitor_tests(self) -> list[dict]:
+        if not self.elm.is_can:
+            return []
+        mids: set[int] = set()
+        base = 0x00
+        while base <= 0xE0:
+            got = False
+            for _, msg in self._responses(f"06{base:02X}", 0x46, base):
+                if len(msg) >= 6:
+                    mids |= decoder.parse_supported(msg[2:6], base)
+                    got = True
+            if not got or (base + 0x20) not in mids:
+                break
+            base += 0x20
+        tests = []
+        for mid in sorted(m for m in mids if m % 0x20):
+            seen = set()
+            for addr, msg in self._responses(f"06{mid:02X}", 0x46, mid):
+                for t in monitor_tests.parse_mode06(msg):
+                    key = (t["mid"], t["tid"])
+                    if key not in seen:  # engine computer's answer first
+                        seen.add(key)
+                        tests.append({**t, "ecu": ecu_name(addr)})
+        return tests
+
+    # ---- ECU information (service $09): calibration IDs, checksums, names
+    def read_ecu_info(self) -> dict[str, dict]:
+        info: dict[str, dict] = {}
+        for pid, key, parse in ((0x0A, "name", lambda m: monitor_tests.parse_ascii_records(m, 20)),
+                                (0x04, "calibration_ids", lambda m: monitor_tests.parse_ascii_records(m, 16)),
+                                (0x06, "checksums", monitor_tests.parse_cvns)):
+            for addr, msg in self._responses(f"09{pid:02X}", 0x49, pid):
+                vals = parse(msg)
+                if vals:
+                    entry = info.setdefault(ecu_name(addr), {})
+                    entry[key] = vals[0] if key == "name" else vals
+        return info
+
     # ---- vehicle info
     def read_vin(self) -> str | None:
         raw = b""
@@ -135,7 +175,13 @@ class Scanner:
             "freeze_frame": freeze,
             "live": live,
             "modules": None,
+            "tests": [],
+            "ecu_info": {},
         }
+        progress("Reading monitor test results")
+        result["tests"] = self.read_monitor_tests()
+        progress("Reading computer information")
+        result["ecu_info"] = self.read_ecu_info()
         if modules:
             progress("Checking ABS & airbag modules")
             try:

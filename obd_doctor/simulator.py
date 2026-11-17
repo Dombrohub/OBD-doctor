@@ -125,6 +125,8 @@ class FakeCar:
             0x14: [j(10, 180), 0xFF], 0x15: [j(120, 140), 0xFF], 0x1F: [runtime >> 8, runtime & 0xFF],
             0x21: [0, 87], 0x2F: [j(150, 152)], 0x30: [12], 0x31: [0x02, 0x1C], 0x33: [101],
             0x42: [0x37, 0x50 + j(0, 40)], 0x46: [62], 0x5C: [131],
+            0x1C: [6], 0x4D: [0, 95], 0x4E: [0x03, 0x20], 0x51: [1], 0x5E: [0, 22 + j(0, 4)],
+            0xA6: list((1482513).to_bytes(4, "big")),  # odometer 148,251.3 km
         }
         return table.get(pid)
 
@@ -132,7 +134,7 @@ class FakeCar:
         if ecu == "7E9":
             pids = {0x01, 0x05, 0x0C, 0x0D} if base == 0 else set()
         else:
-            pids = set(self.live_pids()) | {0x20, 0x40}
+            pids = set(self.live_pids()) | {0x20, 0x40, 0x60, 0x80, 0xA0}
         bits = 0
         for p in pids:
             if base < p <= base + 32:
@@ -142,7 +144,46 @@ class FakeCar:
     @staticmethod
     def live_pids():
         return [0x01, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-                0x10, 0x11, 0x14, 0x15, 0x1F, 0x21, 0x2F, 0x30, 0x31, 0x33, 0x42, 0x46, 0x5C]
+                0x10, 0x11, 0x14, 0x15, 0x1F, 0x21, 0x2F, 0x30, 0x31, 0x33, 0x42, 0x46, 0x5C,
+                0x1C, 0x4D, 0x4E, 0x51, 0x5E, 0xA6]
+
+    # Monitor test results (service $06): MID -> [(TID, UAS, value, min, max)]
+    MODE06 = {
+        0x01: [(0x01, 0x0A, 3690, 3690, 3690), (0x05, 0x10, 62, 0, 150), (0x06, 0x10, 71, 0, 150)],  # O2 B1S1
+        0x21: [(0x80, 0x01, 141, 0, 420)],          # catalyst bank 1: passing
+        0x22: [(0x80, 0x01, 133, 0, 420)],          # catalyst bank 2: passing
+        0x3C: [(0x84, 0x01, 812, 0, 640)],          # EVAP 0.020" leak test: FAILING (no code yet)
+        0xA1: [(0x0B, 0x24, 8, 0, 65535), (0x0C, 0x24, 27, 0, 65535)],
+        0xA2: [(0x0B, 0x24, 0, 0, 65535), (0x0C, 0x24, 0, 0, 65535)],
+        0xA3: [(0x0B, 0x24, 6, 0, 65535), (0x0C, 0x24, 19, 0, 65535)],    # cylinder 2 misfiring most
+        0xA4: [(0x0B, 0x24, 2, 0, 65535), (0x0C, 0x24, 8, 0, 65535)],
+        0xA5: [(0x0B, 0x24, 0, 0, 65535), (0x0C, 0x24, 0, 0, 65535)],
+    }
+
+    def monitor_test(self, mid: int):
+        if mid % 0x20 == 0:  # supported-MID bitmap
+            bits = 0
+            for m in self.MODE06:
+                if mid < m <= mid + 32:
+                    bits |= 1 << (32 - (m - mid))
+            if mid + 0x20 <= 0xA0:
+                bits |= 1  # more MIDs follow
+            return bytes([0x46, mid]) + bits.to_bytes(4, "big")
+        if mid not in self.MODE06:
+            return None
+        out = bytes([0x46])
+        for tid, uas, v, lo, hi in self.MODE06[mid]:
+            out += bytes([mid, tid, uas]) + v.to_bytes(2, "big") + lo.to_bytes(2, "big") + hi.to_bytes(2, "big")
+        return out
+
+    def ecu_info(self, ecu: str, pid: int):
+        names = {"7E8": "ECM\0-EngineControl", "7E9": "TCM\0-TransmissionCtrl"}
+        if pid == 0x0A:
+            return bytes([0x49, 0x0A, 0x01]) + names[ecu].encode()[:20].ljust(20, b"\0")
+        if pid == 0x04:
+            cal = {"7E8": "CM5A-12A650-AXC", "7E9": "CM5P-7J104-AB"}[ecu]
+            return bytes([0x49, 0x04, 0x01]) + cal.encode().ljust(16, b"\0")
+        return bytes([0x49, 0x06, 0x01]) + ({"7E8": b"\x3a\x7f\x10\xc2", "7E9": b"\x91\x04\xee\x5b"}[ecu])
 
     def handle(self, req: bytes) -> dict[str, bytes]:
         """Return {ecu: payload} for an OBD request."""
@@ -173,6 +214,10 @@ class FakeCar:
                 p = bytes([0x44])
             elif mode == 0x09 and len(req) >= 2 and req[1] == 0x02 and ecu == "7E8":
                 p = bytes([0x49, 0x02, 0x01]) + self.vin.encode()
+            elif mode == 0x09 and len(req) >= 2 and req[1] in (0x04, 0x06, 0x0A):
+                p = self.ecu_info(ecu, req[1])
+            elif mode == 0x06 and len(req) >= 2 and ecu == "7E8":
+                p = self.monitor_test(req[1])
             if p is not None:
                 out[ecu] = p
         return out

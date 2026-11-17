@@ -62,6 +62,28 @@ KWP2000 fallback). This works on most CAN-bus cars, roughly 2008 and newer.
   (`demo-gm`, `demo-holden`, `demo-bmw`), not yet on real vehicles. Module labels come from the module's own name when it
   reports one; otherwise they're a best guess from the address.
 
+## Self-tests, computer information and drive cycles
+- **Self-test results (OBD Mode 6)**, on the Vehicle & tests tab and in the report: the car's own test results
+  for catalysts, O2 sensors, EVAP leaks, EGR and more, each with its pass/fail limits. A failed test is flagged
+  as an early warning, often before a trouble code is set.
+- **Misfire counts per cylinder** from the engine computer's misfire counter, which pinpoint the cylinder to
+  check.
+- **Computer information (OBD Mode 9):** each computer's name, calibration (software) ID and checksum. Useful
+  for checking whether a software update has been applied.
+- **More live data:** odometer (newer cars), fuel type, OBD standard, fuel rate, and time since codes were
+  cleared / with the check engine light on.
+- **Tools → Drive cycle helper:** watches the readiness monitors complete live while you follow a general
+  drive cycle.
+- **Tools → Relearn & reset guide:** what to do after a battery change, throttle body cleaning, clearing
+  codes or a tyre rotation, and which jobs need a workshop.
+
+## What OBD EFT doesn't do
+OBD EFT only reads from the car (apart from clearing codes). It does not do service resets, actuation tests,
+module or injector coding, ECU programming, or key/immobiliser programming. Those write to the car's computers
+using manufacturer-specific, often security-locked procedures that aren't publicly available. A mistake, or
+a Bluetooth adapter dropping out mid-write, can permanently disable a module, including ABS or airbag
+computers. Use a brand-specific or professional bi-directional scan tool, or a workshop, for those jobs.
+
 ## Tools
 - **Adapter self-test** (**Tools → Test adapter…**, or the `test-adapter` command): checks what your adapter
   can do, with no car needed. It identifies clones (there was never a genuine "v1.5" chip) and STN-based

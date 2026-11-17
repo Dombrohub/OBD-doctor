@@ -55,6 +55,13 @@ def decode_status(d):
             "engine_type": "diesel" if diesel else "gasoline", "monitors": monitors}
 
 
+OBD_STANDARDS = {1: "OBD-II (California ARB)", 2: "OBD (US EPA)", 3: "OBD and OBD-II", 4: "OBD-I", 5: "Not OBD compliant",
+                 6: "EOBD (Europe)", 7: "EOBD and OBD-II", 8: "EOBD and OBD", 9: "EOBD, OBD and OBD-II", 10: "JOBD (Japan)",
+                 11: "JOBD and OBD-II", 12: "JOBD and EOBD", 13: "JOBD, EOBD and OBD-II"}
+FUEL_TYPES = {1: "Petrol", 2: "Methanol", 3: "Ethanol", 4: "Diesel", 5: "LPG", 6: "CNG", 7: "Propane", 8: "Electric",
+              9: "Bi-fuel petrol", 10: "Bi-fuel methanol", 11: "Bi-fuel ethanol", 12: "Bi-fuel LPG", 13: "Bi-fuel CNG",
+              16: "Hybrid petrol", 17: "Hybrid ethanol", 18: "Hybrid diesel", 19: "Hybrid electric"}
+
 FUEL_SYSTEM = {
     1: "Open loop (engine still warming up)",
     2: "Closed loop (normal)",
@@ -97,12 +104,18 @@ PIDS = {
     0x42: ("Control module voltage", "V", lambda d: round(_u16(d) / 1000, 2)),
     0x46: ("Ambient air temperature", "°C", lambda d: d[0] - 40),
     0x5C: ("Engine oil temperature", "°C", lambda d: d[0] - 40),
+    0x1C: ("OBD standard", "", lambda d: OBD_STANDARDS.get(d[0], f"type {d[0]}")),
+    0x4D: ("Time run with check engine light on", "min", _u16),
+    0x4E: ("Time since codes cleared", "min", _u16),
+    0x51: ("Fuel type", "", lambda d: FUEL_TYPES.get(d[0], f"type {d[0]}")),
+    0x5E: ("Engine fuel rate", "L/h", lambda d: round(_u16(d) / 20, 2)),
+    0xA6: ("Odometer", "km", lambda d: round(((d[0] << 24) | (d[1] << 16) | (d[2] << 8) | d[3]) / 10, 1)),
 }
 
 # PIDs shown in the scan report / live view (in display order)
 REPORT_PIDS = [0x0C, 0x0D, 0x05, 0x5C, 0x04, 0x11, 0x0B, 0x10, 0x0F, 0x06, 0x07, 0x08,
                0x09, 0x0E, 0x14, 0x15, 0x03, 0x0A, 0x2F, 0x42, 0x33, 0x46, 0x1F, 0x21,
-               0x30, 0x31]
+               0x30, 0x31, 0x4D, 0x4E, 0x5E, 0xA6, 0x51, 0x1C]
 LIVE_PIDS = [0x0C, 0x0D, 0x05, 0x04, 0x11, 0x0B, 0x10, 0x06, 0x07, 0x08, 0x09, 0x0E,
              0x14, 0x15, 0x42]
 FREEZE_PIDS = [0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,

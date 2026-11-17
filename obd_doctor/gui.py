@@ -445,7 +445,7 @@ class App:
 
     def _build_vehicle_tab(self):
         tab = ttk.Frame(self.nb, padding=10)
-        self.nb.add(tab, text="Vehicle & readiness")
+        self.nb.add(tab, text="Vehicle & tests")
         frame, self.vehicle_tree = self._tree(tab, ("Item", "Value"), (320, 400), height=18)
         frame.pack(fill="both", expand=True)
         self.vehicle_tree.tag_configure("ok", foreground=OK)
@@ -1162,7 +1162,32 @@ class App:
             for name, state in st["monitors"].items():
                 rows.append(("ok" if state == "complete" else "warn", name,
                              "Ready" if state == "complete" else "Not ready"))
-        for pid in (0x21, 0x30, 0x31, 0x1F):
+        tests = s.get("tests") or []
+        if tests:
+            from .monitor_tests import misfire_counts
+            failed = sum(1 for t in tests if not t["passed"] and not 0xA1 <= t["mid"] <= 0xAD)
+            rows.append(("section", f"Self-test results (OBD Mode 6): {failed} failed", ""))
+            for t in tests:
+                if 0xA1 <= t["mid"] <= 0xAD:
+                    continue
+                val = f"{t['value']} {t['unit']}".strip()
+                rows.append(("ok" if t["passed"] else "warn", f"{t['monitor']} - {t['test']}",
+                             f"{'Pass' if t['passed'] else 'FAILED'}: {val} (limits {t['min']} to {t['max']})"))
+            counts = misfire_counts(tests)
+            if counts:
+                rows.append(("section", "Misfire counts (this / last drive)", ""))
+                for cyl, n in sorted(counts.items()):
+                    rows.append(("warn" if n else "ok", f"Cylinder {cyl}", f"{n} misfires"))
+        info = s.get("ecu_info") or {}
+        if info:
+            rows.append(("section", "Computers (OBD Mode 9)", ""))
+            for ecu, d in info.items():
+                rows.append(("", ecu, d.get("name", "")))
+                if d.get("calibration_ids"):
+                    rows.append(("", "    Calibration (software) ID", ", ".join(d["calibration_ids"])))
+                if d.get("checksums"):
+                    rows.append(("", "    Calibration checksum (CVN)", ", ".join(d["checksums"])))
+        for pid in (0x21, 0x30, 0x31, 0x1F, 0x4D, 0x4E, 0xA6, 0x51, 0x1C):
             if pid in s["live"]:
                 if not any(r[1] == "History" for r in rows):
                     rows.append(("section", "History", ""))
@@ -1176,6 +1201,8 @@ class App:
         menubar = tk.Menu(self.root)
         tools = tk.Menu(menubar, tearoff=0)
         tools.add_command(label="Test adapter…", command=self.test_adapter)
+        tools.add_command(label="Drive cycle helper…", command=self.drive_cycle_helper)
+        tools.add_command(label="Relearn & reset guide…", command=self.relearn_guide)
         tools.add_command(label="Create desktop & Start Menu shortcuts", command=self.create_shortcuts)
         tools.add_separator()
         tools.add_command(label="Save support file…", command=self.save_support_file)
@@ -1297,6 +1324,130 @@ class App:
             self._error("Update", str(exc))
             return
         self.on_close()  # close so the installer can replace the program files
+
+    # ------------------------------------------------------------ drive cycle & relearn
+    DRIVE_STEPS = [
+        "Start cold: let the car sit for at least 8 hours (overnight) so the engine is fully cold. Keep the fuel "
+        "tank between 1/4 and 3/4 full (the EVAP test needs this).",
+        "Start the engine and idle for 2-3 minutes with the headlights and rear demister on.",
+        "Drive in town for about 10 minutes at 30-50 km/h, with a few gentle stops.",
+        "Accelerate gently onto an open road and hold a steady 80-100 km/h for 10-15 minutes.",
+        "Coast down from about 90 to 30 km/h without braking or changing gear. Repeat 2-3 times where it's safe.",
+        "Stop, idle for 2 minutes, then switch off. Some monitors (often EVAP) finish only after the car sits "
+        "overnight.",
+    ]
+
+    def drive_cycle_helper(self):
+        if not self.scanner:
+            messagebox.showinfo("Drive cycle helper", "Connect to the car first. The helper then shows each "
+                                "readiness monitor completing as you drive.", parent=self.root)
+            return
+        win = tk.Toplevel(self.root)
+        win.title("Drive cycle helper - OBD EFT")
+        win.configure(bg=BG)
+        win.geometry("760x620")
+        t = tk.Text(win, wrap="word", bg=PANEL, fg=TEXT, relief="flat", padx=16, pady=14, font=self.f["normal"])
+        t.pack(fill="both", expand=True, padx=12, pady=12)
+        self._text_tags(t)
+        t.tag_configure("ok", foreground=OK, font=self.f["bold"])
+        t.tag_configure("no", foreground=SEV["medium"][0], font=self.f["bold"])
+        self._dc_win, self._dc_text, self._dc_status = win, t, None
+        self.live_running = False
+
+        def render():
+            t.config(state="normal")
+            t.delete("1.0", "end")
+            t.insert("end", "Readiness monitors\n", "h")
+            st = self._dc_status
+            if not st:
+                t.insert("end", "Reading from the car…\n", "muted")
+            else:
+                mons = st.get("monitors", {})
+                done = sum(1 for v in mons.values() if v == "complete")
+                t.insert("end", f"{done} of {len(mons)} ready", "b")
+                t.insert("end", f"   (updated {time.strftime('%H:%M:%S')})\n\n", "muted")
+                for name, state in mons.items():
+                    t.insert("end", " \u2713 " if state == "complete" else " \u25cb ", "ok" if state == "complete" else "no")
+                    t.insert("end", f"{name}\n")
+            t.insert("end", "\nGeneral drive cycle\n", "h")
+            t.insert("end", "Safety first: follow road rules, and have a passenger watch this screen.\n", "b")
+            for i, step in enumerate(self.DRIVE_STEPS, 1):
+                t.insert("end", f"{i}. {step}\n", "num")
+            t.insert("end", "\nThis is a general cycle that suits most cars; exact cycles vary by manufacturer. "
+                            "Many monitors also complete during a few days of normal mixed driving.", "muted")
+            t.config(state="disabled")
+
+        def poll():
+            if not win.winfo_exists() or not self.scanner:
+                return
+            sc = self.scanner
+            self.worker.submit("drivecycle", lambda: sc.read_pid(0x01))
+            win.after(5000, poll)
+
+        self._dc_render = render
+        render()
+        poll()
+        ttk.Button(win, text="Close", command=win.destroy).pack(pady=(0, 12))
+
+    def _done_drivecycle(self, status, payload):
+        if status == "ok" and isinstance(payload, dict) and getattr(self, "_dc_win", None) is not None:
+            try:
+                if self._dc_win.winfo_exists():
+                    self._dc_status = payload
+                    self._dc_render()
+            except tk.TclError:
+                pass
+
+    RELEARN = [
+        ("After disconnecting or replacing the battery",
+         ["Start the engine and let it idle for about 10 minutes with the A/C, lights and other loads off, "
+          "without touching the accelerator, so the idle speed relearns.",
+          "Then drive normally for 15-20 minutes with a mix of speeds.",
+          "Reset the clock and radio, and the one-touch windows if needed (see the owner's manual).",
+          "Some cars (many BMW, Mercedes, Audi/VW and newer Ford models with a battery monitor) need the new "
+          "battery registered with a brand-capable scan tool. A workshop can do this."]),
+        ("After cleaning or replacing the throttle body",
+         ["Turn the ignition on (engine off) for 30 seconds, then off for 10 seconds. Many cars use this to learn "
+          "the closed-throttle position.",
+          "Start the engine and idle for 10 minutes without touching the accelerator.",
+          "If the idle is still high, low or hunting, the car needs its own throttle relearn procedure (service "
+          "manual) or a scan tool with that function."]),
+        ("After a repair or clearing codes",
+         ["The readiness monitors reset. Use Tools \u2192 Drive cycle helper and drive until they're ready again.",
+          "Re-scan after a few days to make sure the code hasn't returned."]),
+        ("After rotating or replacing tyres (tyre pressure sensors)",
+         ["Set all tyres to the pressure on the door-pillar sticker.",
+          "Many cars relearn by themselves after 10-20 minutes of driving above about 25 km/h.",
+          "Others use a button or menu sequence in the owner's manual, or need a TPMS tool."]),
+        ("Jobs that need a workshop or brand-specific tool",
+         ["Steering angle sensor calibration (after a wheel alignment or steering work)",
+          "Electronic park brake service mode (when replacing rear brake pads)",
+          "ABS brake bleeding after the ABS unit is replaced",
+          "Diesel injector coding, module coding and ECU programming",
+          "Key and immobiliser programming",
+          "OBD EFT doesn't do these: they write to the car's computers using manufacturer-specific procedures, "
+          "and a mistake can disable a module."]),
+    ]
+
+    def relearn_guide(self):
+        win = tk.Toplevel(self.root)
+        win.title("Relearn & reset guide - OBD EFT")
+        win.configure(bg=BG)
+        win.geometry("820x640")
+        t = tk.Text(win, wrap="word", bg=PANEL, fg=TEXT, relief="flat", padx=16, pady=14, font=self.f["normal"])
+        sb = ttk.Scrollbar(win, orient="vertical", command=t.yview)
+        t.configure(yscrollcommand=sb.set)
+        t.pack(side="left", fill="both", expand=True, padx=(12, 0), pady=12)
+        sb.pack(side="left", fill="y", pady=12, padx=(0, 12))
+        self._text_tags(t)
+        t.insert("end", "General guidance - your owner's manual or service manual has the exact procedure "
+                        "for your car.\n\n", "muted")
+        for title, steps in self.RELEARN:
+            t.insert("end", title + "\n", "h")
+            for step in steps:
+                t.insert("end", "\u2022  " + step + "\n", "bullet")
+            t.insert("end", "\n")
+        t.config(state="disabled")
 
     def about(self):
         messagebox.showinfo(
