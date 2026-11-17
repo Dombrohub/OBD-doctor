@@ -1,0 +1,9 @@
+# Build output
+dist/
+build/
+*.spec.bak
+__pycache__/
+*.pyc
+# Local settings and test files
+.venv/
+*.log

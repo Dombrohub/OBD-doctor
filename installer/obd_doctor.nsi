@@ -1,0 +1,162 @@
+; OBD Doctor - Windows installer (NSIS 3)
+; Build:  makensis installer/obd_doctor.nsi      (from the project root)
+; Output: dist/OBDDoctor-Setup.exe
+;
+; Silent install:    OBDDoctor-Setup.exe /S  [/D=C:\Path\To\Install]
+; Silent uninstall:  "C:\Program Files\OBD Doctor\uninstall.exe" /S
+
+Unicode true
+SetCompressor /SOLID lzma
+
+!define APP_NAME      "OBD Doctor"
+!define APP_VERSION   "1.8.1"
+!define APP_PUBLISHER "OBD Doctor"
+!define APP_EXE       "OBDDoctor.exe"
+!define CLI_EXE       "obd-doctor-cli.exe"
+!define UNINST_KEY    "Software\Microsoft\Windows\CurrentVersion\Uninstall\OBDDoctor"
+!define APP_KEY       "Software\OBDDoctor"
+!define DIST          "..\dist"
+!define APPDIR        "..\dist\OBDDoctor"
+!define ASSETS        "..\obd_doctor\assets"
+
+Name "${APP_NAME}"
+OutFile "${DIST}\OBDDoctor-Setup.exe"  ; fixed name: each new version replaces the file
+InstallDir "$PROGRAMFILES64\${APP_NAME}"
+InstallDirRegKey HKLM "${APP_KEY}" "InstallDir"
+RequestExecutionLevel admin
+BrandingText "${APP_NAME} ${APP_VERSION}"
+ShowInstDetails show
+ShowUninstDetails show
+
+; ---- installer file properties
+VIProductVersion "${APP_VERSION}.0"
+VIAddVersionKey "ProductName"     "${APP_NAME}"
+VIAddVersionKey "FileDescription" "${APP_NAME} Setup"
+VIAddVersionKey "FileVersion"     "${APP_VERSION}"
+VIAddVersionKey "ProductVersion"  "${APP_VERSION}"
+VIAddVersionKey "CompanyName"     "${APP_PUBLISHER}"
+VIAddVersionKey "LegalCopyright"  "Provided as is, without warranty"
+
+!include "MUI2.nsh"
+!include "x64.nsh"
+!include "FileFunc.nsh"
+
+; ---- look
+!define MUI_ICON   "${ASSETS}\icon.ico"
+!define MUI_UNICON "${ASSETS}\icon.ico"
+!define MUI_WELCOMEFINISHPAGE_BITMAP   "wizard.bmp"
+!define MUI_UNWELCOMEFINISHPAGE_BITMAP "wizard.bmp"
+!define MUI_HEADERIMAGE
+!define MUI_HEADERIMAGE_RIGHT
+!define MUI_HEADERIMAGE_BITMAP   "header.bmp"
+!define MUI_HEADERIMAGE_UNBITMAP "header.bmp"
+!define MUI_ABORTWARNING
+!define MUI_COMPONENTSPAGE_SMALLDESC
+
+; ---- installer pages
+!define MUI_WELCOMEPAGE_TITLE "Welcome to ${APP_NAME} ${APP_VERSION} Setup"
+!define MUI_WELCOMEPAGE_TEXT "This will install ${APP_NAME} on your computer.$\r$\n$\r$\n\
+${APP_NAME} connects to your car through an ELM327 OBD-II adapter (USB, Bluetooth or Wi-Fi), \
+reads engine, ABS and airbag trouble codes and live sensor data, and explains what is likely wrong - \
+with optional plain-English AI explanations from Claude.$\r$\n$\r$\n\
+Click Next to continue."
+!insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_LICENSE "license.txt"
+!insertmacro MUI_PAGE_COMPONENTS
+!insertmacro MUI_PAGE_DIRECTORY
+!insertmacro MUI_PAGE_INSTFILES
+!define MUI_FINISHPAGE_RUN
+!define MUI_FINISHPAGE_RUN_TEXT "Launch ${APP_NAME}"
+!define MUI_FINISHPAGE_RUN_FUNCTION LaunchApp
+!define MUI_FINISHPAGE_TEXT "${APP_NAME} has been installed.$\r$\n$\r$\n\
+Tip: choose 'demo' as the adapter to try it without a car."
+!insertmacro MUI_PAGE_FINISH
+
+; ---- uninstaller pages
+!insertmacro MUI_UNPAGE_CONFIRM
+!insertmacro MUI_UNPAGE_INSTFILES
+
+!insertmacro MUI_LANGUAGE "English"
+
+; ---- sections
+Section "${APP_NAME} (required)" SecMain
+  SectionIn RO
+  SetOutPath "$INSTDIR"
+  ; App folder: both programs plus the shared _internal runtime folder
+  RMDir /r "$INSTDIR\_internal"  ; clear the old runtime on upgrade
+  File /r "${APPDIR}\*.*"
+  File "/oname=icon.ico" "${ASSETS}\icon.ico"
+  File "/oname=License.txt" "license.txt"
+  WriteUninstaller "$INSTDIR\uninstall.exe"
+
+  ; Start Menu
+  CreateDirectory "$SMPROGRAMS\${APP_NAME}"
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0 \
+    SW_SHOWNORMAL "" "Read your car's computer and diagnose problems"
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME} Command Prompt.lnk" "$SYSDIR\cmd.exe" \
+    '/k "cd /d "$INSTDIR" && echo OBD Doctor command line - type: ${CLI_EXE} --help"' "$INSTDIR\icon.ico" 0
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk" "$INSTDIR\uninstall.exe"
+
+  ; Apps & features entry
+  WriteRegStr HKLM "${APP_KEY}" "InstallDir" "$INSTDIR"
+  WriteRegStr HKLM "${UNINST_KEY}" "DisplayName" "${APP_NAME}"
+  WriteRegStr HKLM "${UNINST_KEY}" "DisplayVersion" "${APP_VERSION}"
+  WriteRegStr HKLM "${UNINST_KEY}" "Publisher" "${APP_PUBLISHER}"
+  WriteRegStr HKLM "${UNINST_KEY}" "DisplayIcon" "$INSTDIR\${APP_EXE}"
+  WriteRegStr HKLM "${UNINST_KEY}" "InstallLocation" "$INSTDIR"
+  WriteRegStr HKLM "${UNINST_KEY}" "UninstallString" '"$INSTDIR\uninstall.exe"'
+  WriteRegStr HKLM "${UNINST_KEY}" "QuietUninstallString" '"$INSTDIR\uninstall.exe" /S'
+  WriteRegDWORD HKLM "${UNINST_KEY}" "NoModify" 1
+  WriteRegDWORD HKLM "${UNINST_KEY}" "NoRepair" 1
+  ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
+  IntFmt $0 "0x%08X" $0
+  WriteRegDWORD HKLM "${UNINST_KEY}" "EstimatedSize" "$0"
+SectionEnd
+
+Section "Desktop shortcut" SecDesktop
+  CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
+SectionEnd
+
+!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecMain}    "The ${APP_NAME} app, command-line tool and Start Menu shortcuts."
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} "Put a ${APP_NAME} shortcut on the desktop."
+!insertmacro MUI_FUNCTION_DESCRIPTION_END
+
+Function .onInit
+  ${IfNot} ${RunningX64}
+    MessageBox MB_ICONSTOP "${APP_NAME} requires 64-bit Windows."
+    Abort
+  ${EndIf}
+  SetRegView 64
+  SetShellVarContext all  ; shortcuts for all users
+FunctionEnd
+
+Function LaunchApp
+  ; Start through Explorer so the app does NOT inherit the installer's admin rights
+  Exec '"$WINDIR\explorer.exe" "$INSTDIR\${APP_EXE}"'
+FunctionEnd
+
+; ---- uninstaller
+Function un.onInit
+  SetRegView 64
+  SetShellVarContext all
+FunctionEnd
+
+Section "Uninstall"
+  Delete "$INSTDIR\${APP_EXE}"
+  Delete "$INSTDIR\${CLI_EXE}"
+  RMDir /r "$INSTDIR\_internal"
+  Delete "$INSTDIR\icon.ico"
+  Delete "$INSTDIR\License.txt"
+  Delete "$INSTDIR\uninstall.exe"
+  RMDir "$INSTDIR"  ; only removed if empty (keeps any reports the user saved there)
+
+  Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk"
+  Delete "$SMPROGRAMS\${APP_NAME}\${APP_NAME} Command Prompt.lnk"
+  Delete "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk"
+  RMDir "$SMPROGRAMS\${APP_NAME}"
+  Delete "$DESKTOP\${APP_NAME}.lnk"
+
+  DeleteRegKey HKLM "${UNINST_KEY}"
+  DeleteRegKey HKLM "${APP_KEY}"
+SectionEnd
