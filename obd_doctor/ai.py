@@ -76,6 +76,9 @@ def build_scan_summary(scan: dict, findings, vehicle: str = "", symptoms: str = 
     lines = []
     from . import vin as vinlib
     from .diagnose import inspection_readiness
+    if scan.get("demo"):
+        lines.append("NOTE: this is OBD EFT's built-in demo - a simulated car with made-up faults. Say so briefly "
+                     "at the start of your answer.")
     lines.append(f"Vehicle (as described by the owner): {vehicle.strip() or 'not given'}")
     decoded = vinlib.describe(scan.get("vin"))
     if decoded:

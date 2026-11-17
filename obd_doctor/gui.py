@@ -246,6 +246,14 @@ class App:
         ttk.Button(self.update_banner, text="Update now", style="Accent.TButton",
                    command=lambda: self.install_update()).pack(side="right", padx=4, pady=6)
         self.update_info = None
+        # Demo banner (shown while connected to the simulated car)
+        self.demo = False
+        self.demo_banner = tk.Frame(self.root, bg="#fff4e0", highlightbackground="#f3c98b", highlightthickness=1)
+        tk.Label(self.demo_banner, text="\u26a0  DEMO MODE \u2013 these results come from a simulated car with "
+                                        "made-up faults, not from your vehicle. Pick your adapter's port and "
+                                        "click Connect to scan your car.",
+                 bg="#fff4e0", fg="#8a4b00", font=self.f["bold"], wraplength=1000, justify="left").pack(
+            side="left", padx=16, pady=8)
         inner = tk.Frame(top, bg=PANEL, padx=16, pady=10)
         inner.pack(fill="x")
         tk.Label(inner, text="OBD EFT", bg=PANEL, fg=TEXT, font=self.f["title"]).pack(side="left")
@@ -261,7 +269,7 @@ class App:
         conn = ttk.Frame(self.root, padding=(16, 12, 16, 4))
         conn.pack(fill="x")
         ttk.Label(conn, text="Adapter").pack(side="left")
-        self.port_var = tk.StringVar(value="demo")
+        self.port_var = tk.StringVar(value=config.get("last_port") or "auto")  # never start on the demo car
         self.port_box = ttk.Combobox(conn, textvariable=self.port_var, width=24)
         self.port_box.pack(side="left", padx=(6, 2))
         ttk.Button(conn, text="⟳", width=3, command=self.refresh_ports).pack(side="left")
@@ -547,6 +555,8 @@ class App:
             self.live_running = False
             elm, self.elm, self.scanner = self.elm, None, None
             self.worker.submit("disconnect", elm.close)
+            self.demo = False
+            self.demo_banner.pack_forget()
             self._set_connected(False)
             self._append_log("Disconnected")
             return
@@ -555,6 +565,7 @@ class App:
         if not target:
             messagebox.showinfo("Adapter", "Choose or type the adapter port first.", parent=self.root)
             return
+        self._connect_target = target
         self._set_busy(True, f"Connecting to {target}…")
         self.worker.submit("connect", self._do_connect, target, proto, self.debug_var.get())
 
@@ -590,7 +601,14 @@ class App:
             self._error("Connection failed", msg)
             return
         self.elm, self.scanner = payload, Scanner(payload)
-        self._set_connected(True, f"Connected · {self.elm.protocol_name}")
+        self.demo = self._connect_target.startswith("demo")
+        if self.demo:
+            self._set_connected(True, "Connected \u00b7 DEMO \u2013 simulated car")
+            self.demo_banner.pack(fill="x", after=self.top_frame)
+        else:
+            self._set_connected(True, f"Connected · {self.elm.protocol_name}")
+            self.demo_banner.pack_forget()
+            config.set("last_port", self._connect_target)  # remember the real adapter for next time
         self._append_log(f"Connected: {self.elm.version} · {self.elm.protocol_name}")
         if self.elm.voltage:
             self.cards["battery"].config(text=f"{self.elm.voltage:.1f} V", fg=TEXT)
@@ -613,7 +631,10 @@ class App:
             self._error("Scan failed", payload)
             return
         self.scan = payload
-        if self.save_hist_var.get():
+        if self.demo:
+            payload["demo"] = True
+            self._append_log("Demo scan (simulated car) - not saved to history")
+        elif self.save_hist_var.get():
             try:
                 history.save(payload)
             except OSError as exc:
@@ -973,8 +994,9 @@ class App:
         steps = [
             "1.  Plug your ELM327 adapter into the car's OBD-II port (under the dashboard, driver's side).",
             "2.  Turn the ignition ON or start the engine.",
-            "3.  Pick the adapter above:  COM3 / /dev/ttyUSB0 for USB or Bluetooth,  "
-            "192.168.0.10:35000 for Wi-Fi,  'auto' to search,  or 'demo' to try a simulated car.",
+            "3.  Pick your adapter above:  its COM port for USB or Bluetooth (e.g. COM5),  "
+            "192.168.0.10:35000 for Wi-Fi,  or 'auto' to search for it.",
+            "     (Choosing 'demo' connects to a simulated car with made-up faults, for trying the app without a car.)",
             "4.  Click Connect. A full scan and diagnosis runs automatically.",
         ]
         for s in steps:

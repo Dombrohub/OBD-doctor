@@ -69,6 +69,8 @@ def print_code(info, indent="  "):
 
 
 def print_report(scan, findings):
+    if scan.get("demo"):
+        print(c("\n  DEMO MODE - this is a simulated car with made-up faults, not a real vehicle.", "medium"))
     header("VEHICLE")
     from . import vin as vinlib
     from .diagnose import inspection_readiness
@@ -191,7 +193,9 @@ def cmd_scan(args):
             merge_into_dtcs(scan)
     finally:
         elm.close()
-    if not args.no_save:
+    if args.port.startswith("demo"):
+        scan["demo"] = True
+    elif not args.no_save:
         from . import history
         try:
             history.save(scan)

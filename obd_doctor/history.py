@@ -60,6 +60,8 @@ def load_all(vin: str | None = None) -> list[dict]:
         except (OSError, ValueError, KeyError, TypeError):
             continue
         data["_file"] = name
+        if data.get("demo") or "(simulator)" in str(data.get("adapter", "")):
+            continue  # demo scans (simulated car) never count as the user's history
         if vin is None or data.get("vin") == vin:
             scans.append(data)
     return scans
