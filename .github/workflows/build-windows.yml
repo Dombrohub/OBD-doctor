@@ -43,6 +43,8 @@ jobs:
         run: |
           dist\OBDEFT\obd-eft-cli.exe --version
           dist\OBDEFT\obd-eft-cli.exe scan --port demo --no-save
+          $out = dist\OBDEFT\obd-eft-cli.exe lookup P2187 | Out-String
+          if ($out -notmatch "Lean at Idle") { Write-Error "trouble-code database missing from the build"; exit 1 }
 
       - name: Install NSIS (installer builder) if missing
         shell: pwsh

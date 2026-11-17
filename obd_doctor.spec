@@ -11,7 +11,9 @@ import sys
 ICON = "obd_doctor/assets/icon.ico" if sys.platform == "win32" else None
 VERSION = "version_info.txt" if sys.platform == "win32" else None
 DATAS = [("obd_doctor/assets/icon.ico", "obd_doctor/assets"),
-         ("obd_doctor/assets/icon.png", "obd_doctor/assets")]
+         ("obd_doctor/assets/icon.png", "obd_doctor/assets"),
+         ("obd_doctor/data/obdex_en.json.gz", "obd_doctor/data"),
+         ("obd_doctor/data/OBDEX-LICENSE.txt", "obd_doctor/data")]
 HIDDEN = ["obd_doctor.__main__", "obd_doctor.simulator", "obd_doctor.gui",
           "obd_doctor.ai", "obd_doctor.config", "obd_doctor.modules", "obd_doctor.history", "obd_doctor.support", "obd_doctor.vin", "obd_doctor.adaptercheck", "obd_doctor.update", "obd_doctor.monitor_tests", "anthropic",
           "serial", "serial.tools.list_ports"]

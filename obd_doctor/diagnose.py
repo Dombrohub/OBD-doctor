@@ -189,8 +189,17 @@ def diagnose(scan: dict) -> list[Finding]:
                                       "other inspections"],
                              mcodes))
         elif m["system"] == "ABS":
-            wheels = [w for c, w in (("C0035", "left front"), ("C0040", "right front"),
-                                     ("C0045", "left rear"), ("C0050", "right rear")) if c in bases]
+            from .dtc_db import GM_WHEEL_CODES
+            wheels = []
+            for c in mcodes:
+                if mods.get("brand") == "GM" and c.split("-")[0] in GM_WHEEL_CODES:
+                    w = GM_WHEEL_CODES[c.split("-")[0]]
+                else:
+                    desc = lookup(c)["description"].lower()
+                    w = next((x for x in ("left front", "right front", "left rear", "right rear")
+                              if x in desc and "wheel speed" in desc), None)
+                if w and w not in wheels:
+                    wheels.append(w)
             causes = ([f"{w.capitalize()} wheel speed sensor, its wiring or tone ring" for w in wheels] or
                       ["A wheel speed sensor, its wiring or tone ring (the most common ABS fault)"])
             causes += ["Low brake fluid", "ABS pump or module fault", "Low battery voltage"]

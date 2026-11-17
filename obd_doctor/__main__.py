@@ -64,6 +64,11 @@ def print_code(info, indent="  "):
         print(f"{indent}   Likely causes (most common first):")
         for cause in info["causes"]:
             print(f"{indent}     - {cause}")
+    for sym in (info.get("symptoms") or [])[:3]:
+        print(f"{indent}   You may notice: {sym}")
+    from .dtc_db import repair_text
+    if repair_text(info):
+        print(f"{indent}   Repair estimate: {repair_text(info)}")
     for tip in info["tips"]:
         print(f"{indent}   Tip: {tip}")
 

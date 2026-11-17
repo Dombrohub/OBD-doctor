@@ -22,7 +22,7 @@ from tkinter import font as tkfont
 from . import __version__, ai, config, decoder, history, update
 from . import vin as vinlib
 from .diagnose import code_details, diagnose
-from .dtc_db import is_valid, lookup
+from .dtc_db import is_valid, lookup, repair_text
 from .elm327 import ELM327, OBDError, PROTOCOLS, find_serial_adapter, open_transport
 from .modules import ModuleScanner, merge_into_dtcs
 from .scanner import Scanner
@@ -409,13 +409,16 @@ class App:
         tab = ttk.Frame(self.nb, padding=10)
         self.nb.add(tab, text="Trouble codes")
         frame, self.codes_tree = self._tree(tab, ("Code", "Description", "Severity", "Found in"),
-                                            (80, 420, 90, 300), height=8)
-        frame.pack(fill="both", expand=True)
+                                            (80, 420, 90, 300), height=5)
+        frame.pack(fill="x")
         self.codes_tree.bind("<<TreeviewSelect>>", self._on_code_select)
         ttk.Label(tab, text="Details", font=self.f["bold"]).pack(anchor="w", pady=(10, 4))
         self.code_detail = tk.Text(tab, height=10, wrap="word", bg=PANEL, fg=TEXT, relief="flat",
                                    highlightbackground=BORDER, highlightthickness=1, padx=12, pady=10,
                                    font=self.f["normal"])
+        dsb = ttk.Scrollbar(tab, orient="vertical", command=self.code_detail.yview)
+        self.code_detail.configure(yscrollcommand=dsb.set)
+        dsb.pack(side="right", fill="y")
         self.code_detail.pack(fill="both", expand=True)
         self._text_tags(self.code_detail)
 
@@ -1117,14 +1120,27 @@ class App:
             t.insert("end", "Found in: " + ", ".join(info["found_in"]) + "\n", "muted")
         if info["manufacturer_specific"]:
             t.insert("end", "Manufacturer-specific code - the exact meaning depends on the brand.\n", "muted")
+        if info.get("about"):
+            t.insert("end", "\nWhat the computer checks\n", "b")
+            t.insert("end", info["about"] + "\n")
         if info["causes"]:
             t.insert("end", "\nLikely causes (most common first)\n", "b")
             for c in info["causes"]:
                 t.insert("end", f"•  {c}\n", "bullet")
+        if info.get("symptoms"):
+            t.insert("end", "\nWhat you may notice\n", "b")
+            for sym in info["symptoms"]:
+                t.insert("end", f"•  {sym}\n", "bullet")
+        rep = repair_text(info)
+        if rep:
+            t.insert("end", "\nRepair estimate: ", "b")
+            t.insert("end", rep + "\n")
         if info["tips"]:
             t.insert("end", "\nTips\n", "b")
             for tip in info["tips"]:
                 t.insert("end", f"→  {tip}\n", "bullet")
+        if info.get("source") == "obdex":
+            t.insert("end", "\nCode details from obdex (github.com/foerbsnavi/obdex, public domain)\n", "muted")
 
     def _render_freeze(self):
         tree = self.freeze_tree
@@ -1452,8 +1468,9 @@ class App:
     def about(self):
         messagebox.showinfo(
             "About OBD EFT",
-            f"OBD EFT {__version__}\n\nReads your car's engine, ABS and airbag computers through an ELM327 "
-            "OBD-II adapter and explains what's wrong.\n\nAI explanations by Anthropic's Claude (optional, uses your "
+            f"OBD EFT {__version__}\n\nReads your car's engine, transmission, ABS and airbag computers through an ELM327 "
+            "OBD-II adapter and explains what's wrong.\n\nTrouble-code details: obdex (github.com/foerbsnavi/obdex), "
+            "public domain (CC0-1.0).\nAI explanations by Anthropic's Claude (optional, uses your "
             f"own API key).\n\nSettings and history: {os.path.dirname(config.config_path())}\n\n"
             "Guidance only - not a substitute for a professional inspection.", parent=self.root)
 

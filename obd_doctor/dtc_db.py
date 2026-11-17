@@ -13,6 +13,9 @@ Severity levels:
 
 from __future__ import annotations
 
+import gzip
+import json
+import os
 import re
 
 DESCRIPTIONS = {
@@ -309,10 +312,12 @@ KNOWLEDGE = {
 _WHEEL_TIPS = ["Check the sensor wiring and connector at that wheel first - they get damaged by road debris and suspension work",
                "A wheel bearing replacement or a cracked/rusted tone ring often causes this",
                "Normal brakes still work; ABS and traction/stability control are switched off until it's fixed"]
-for _code, _wheel in (("C0035", "left front"), ("C0040", "right front"), ("C0045", "left rear"), ("C0050", "right rear")):
-    KNOWLEDGE[_code] = ("high", [f"Faulty {_wheel} wheel speed sensor", f"Damaged wiring or connector at the {_wheel} wheel",
-                                 f"Dirty, cracked or rusted tone ring (reluctor) on the {_wheel} hub",
-                                 f"Worn {_wheel} wheel bearing (on cars where the sensor reads the bearing)"], _WHEEL_TIPS)
+# GM (and Holden) use these four codes for the wheel speed sensors, unlike the generic SAE meanings
+GM_WHEEL_CODES = {"C0035": "left front", "C0040": "right front", "C0045": "left rear", "C0050": "right rear"}
+for _code, _wheel in GM_WHEEL_CODES.items():
+    KNOWLEDGE[_code] = ("high", [], [f"On GM and Holden vehicles this code means the {_wheel} wheel speed sensor circuit "
+                                     "(GM's own use of the code) - check that sensor, its wiring and tone ring",
+                                     _WHEEL_TIPS[2]])
 _AIRBAG_TIPS = ["Airbag systems can injure you if handled wrongly - have this repaired by a professional",
                 "Never probe airbag connectors with a test light or multimeter"]
 for _code in ("B0001", "B0002"):
@@ -380,6 +385,58 @@ _LETTER = {"P": "Powertrain", "C": "Chassis", "B": "Body", "U": "Network / Commu
 
 def is_valid(code: str) -> bool:
     return bool(re.fullmatch(r"[PCBU][0-3][0-9A-F]{3}(-[0-9A-F]{2})?", code.upper().strip()))
+
+
+_OBDEX = None
+
+
+def obdex() -> dict:
+    """The obdex trouble-code database (CC0-1.0, https://github.com/foerbsnavi/obdex), loaded on first use."""
+    global _OBDEX
+    if _OBDEX is None:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "obdex_en.json.gz")
+        try:
+            with gzip.open(path, "rt", encoding="utf-8") as fh:
+                _OBDEX = json.load(fh)
+        except (OSError, ValueError):
+            _OBDEX = {"codes": {}}
+    return _OBDEX
+
+
+def _merge_obdex(info: dict) -> dict:
+    """Add obdex's reviewed title, causes, explanation, symptoms and repair estimate for a generic code."""
+    e = obdex()["codes"].get(info["code"])
+    if not e:
+        return info
+    if e.get("t"):
+        info["description"] = e["t"]
+        info["manufacturer_specific"] = False
+        info["tips"] = [t for t in info["tips"] if "service manual for full details" not in t]
+    if e.get("c"):
+        info["causes"] = [label for label, _ in e["c"]]
+    info["about"] = e.get("d")
+    info["symptoms"] = e.get("s") or []
+    difficulty, diy, cost, hours = (e.get("r") or [None] * 4) + [None] * (4 - len(e.get("r") or []))
+    info["repair"] = {"difficulty": difficulty, "diy": diy, "cost_eur": cost, "hours": hours}
+    if e.get("l") and info["severity"] in ("low", "medium"):
+        info["severity"] = "high"  # the car may go into limp mode
+        info["tips"] = info["tips"] + ["This fault can put the car into limp mode (reduced power)"]
+    info["source"] = "obdex"
+    return info
+
+
+def repair_text(info: dict) -> str | None:
+    r = info.get("repair") or {}
+    parts = []
+    if r.get("difficulty"):
+        parts.append(f"{r['difficulty']} difficulty")
+    if r.get("diy") is not None:
+        parts.append("DIY possible" if r["diy"] else "workshop job")
+    if r.get("hours"):
+        parts.append(f"about {r['hours'][0]:g}-{r['hours'][1]:g} h")
+    if r.get("cost_eur"):
+        parts.append(f"roughly \u20ac{r['cost_eur'][0]:,}-\u20ac{r['cost_eur'][1]:,} (European estimate)")
+    return ", ".join(parts) or None
 
 
 def lookup(code: str) -> dict:
@@ -477,6 +534,7 @@ def lookup(code: str) -> dict:
     if not info["description"]:
         info["description"] = f"Generic {info['system'].lower()} fault (not in local database)"
         info["tips"] = info["tips"] + [f"Look up '{code}' in a service manual for full details"]
+    _merge_obdex(info)
     if not info["causes"] and code[0] == "U":
         info["causes"] = ["Loose/corroded connector at the module", "CAN bus wiring fault",
                           "Low battery voltage", "Failed module"]

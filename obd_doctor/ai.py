@@ -26,7 +26,7 @@ FALLBACK_BETA = "server-side-fallback-2026-07-01"
 SYSTEM_PROMPT = """You are an experienced, honest automotive diagnostic technician helping a car owner \
 understand a scan of their car's OBD-II system. The owner is usually not a mechanic.
 
-You receive: trouble codes (with the module that reported them and whether they are stored, pending or \
+You receive: trouble codes (some with a short note on what the car's computer checks, from the obdex database) (with the module that reported them and whether they are stored, pending or \
 permanent), freeze-frame data, live sensor readings, emissions readiness monitors, and findings from a \
 simple rule-based checker. Treat the rule-based findings as hints, not facts. The owner may also describe \
 the vehicle and the symptoms they notice; use both when they are given.
@@ -104,6 +104,8 @@ def build_scan_summary(scan: dict, findings, vehicle: str = "", symptoms: str = 
     for d in details:
         tag = " (manufacturer-specific)" if d["manufacturer_specific"] else ""
         lines.append(f"- {d['code']}: {d['description']}{tag}; found in {', '.join(d['found_in'])}")
+        if d.get("about"):
+            lines.append(f"  (what the computer checks: {d['about'][:400]})")
 
     ff = scan.get("freeze_frame")
     if ff:

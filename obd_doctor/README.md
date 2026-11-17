@@ -77,6 +77,14 @@ KWP2000 fallback). This works on most CAN-bus cars, roughly 2008 and newer.
 - **Tools → Relearn & reset guide:** what to do after a battery change, throttle body cleaning, clearing
   codes or a tyre rotation, and which jobs need a workshop.
 
+## Trouble-code database
+OBD EFT includes **[obdex](https://github.com/foerbsnavi/obdex)**, an open database of all 9,533 generic OBD-II
+trouble codes (engine, transmission, chassis/ABS, body/airbag and network). For each code it gives a reviewed
+title, what the car's computer checks, likely causes ranked by how common they are, symptoms, and a rough
+repair estimate. obdex's data is public domain (CC0-1.0); its licence is in `obd_doctor/data/OBDEX-LICENSE.txt`.
+Refresh the bundled copy with `python tools/update_obdex.py`. Manufacturer-specific codes (P1xxx, B1xxx and so
+on) aren't in obdex; for those the app says the meaning depends on the make.
+
 ## What OBD EFT doesn't do
 OBD EFT only reads from the car (apart from clearing codes). It does not do service resets, actuation tests,
 module or injector coding, ECU programming, or key/immobiliser programming. Those write to the car's computers
