@@ -1,4 +1,4 @@
-"""Double-click this file (Windows/macOS) to open OBD Doctor. Keep it next to the obd_doctor folder."""
+"""Double-click this file (Windows/macOS) to open OBD EFT. Keep it next to the obd_doctor folder."""
 import os
 import sys
 

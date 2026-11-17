@@ -1,5 +1,5 @@
 @echo off
-REM Builds OBD Doctor into Windows .exe files and an installer. Double-click this file.
+REM Builds OBD EFT into Windows .exe files and an installer. Double-click this file.
 REM Needs Python 3.9+ from https://www.python.org/downloads/ (tick "Add python.exe to PATH").
 REM The installer step also needs NSIS from https://nsis.sourceforge.io (optional).
 cd /d "%~dp0"
@@ -20,9 +20,9 @@ if defined MAKENSIS (
 
 echo.
 echo Done! Your files are in the "dist" folder:
-echo   OBDDoctor-Setup.exe              - installer (if NSIS is installed)
-echo   OBDDoctor\OBDDoctor.exe          - graphical app (portable: copy the whole OBDDoctor folder)
-echo   OBDDoctor\obd-doctor-cli.exe     - command-line version
+echo   OBDEFT-Setup.exe              - installer (if NSIS is installed)
+echo   OBDEFT\OBDEFT.exe          - graphical app (portable: copy the whole OBDEFT folder)
+echo   OBDEFT\obd-eft-cli.exe     - command-line version
 explorer dist
 pause
 exit /b 0

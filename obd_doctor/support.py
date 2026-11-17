@@ -16,15 +16,15 @@ import zipfile
 
 from . import __version__, config, elm327
 
-README = """OBD Doctor support file
+README = """OBD EFT support file
 =======================
 
-This file helps troubleshoot OBD Doctor. It contains:
+This file helps troubleshoot OBD EFT. It contains:
 
   report.txt           The scan report (and any AI explanation), as shown in the app
   scan.json            The same scan as structured data
   app-log.txt          The app's log
-  adapter-traffic.txt  The most recent raw messages between OBD Doctor and the OBD adapter
+  adapter-traffic.txt  The most recent raw messages between OBD EFT and the OBD adapter
   system.txt           App version, Windows/OS version, adapter details
 
 Privacy:
@@ -70,7 +70,7 @@ def _system_text(elm=None, port: str | None = None) -> str:
     except OSError:
         n_hist = 0
     lines = [
-        f"OBD Doctor version: {__version__}",
+        f"OBD EFT version: {__version__}",
         f"Created: {time.strftime('%Y-%m-%d %H:%M:%S')}",
         f"Operating system: {platform.platform()}",
         f"Python: {sys.version.split()[0]} ({'packaged app' if getattr(sys, 'frozen', False) else 'source'})",
@@ -116,4 +116,4 @@ def write_support_file(path: str, scan: dict | None = None, findings=None, log_t
 
 
 def default_filename() -> str:
-    return f"OBDDoctor-support-{time.strftime('%Y%m%d-%H%M')}.zip"
+    return f"OBDEFT-support-{time.strftime('%Y%m%d-%H%M')}.zip"

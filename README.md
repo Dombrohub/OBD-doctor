@@ -1,6 +1,8 @@
-# OBD Doctor
+# OBD EFT
 
-**[Download the latest version for Windows](https://github.com/Dombrohub/obd-doctor/releases/latest)** - run `OBDDoctor-Setup.exe`.
+*Formerly called OBD Doctor. Installing OBD EFT replaces the old app and keeps your settings and history.*
+
+**[Download the latest version for Windows](https://github.com/Dombrohub/obd-doctor/releases/latest)** - run `OBDEFT-Setup.exe`.
 
 Reads your car's computer through an **ELM327 OBD-II adapter** and explains what's wrong.
 
@@ -28,7 +30,7 @@ The OBD-II port is under the dashboard on the driver's side. It's on all US cars
 EU petrol cars from 2001, and EU diesel cars from 2004.
 
 ## ABS and airbag codes
-Standard OBD-II only covers the engine and emissions systems. OBD Doctor also asks the **ABS** and **airbag
+Standard OBD-II only covers the engine and emissions systems. OBD EFT also asks the **ABS** and **airbag
 (SRS)** computers directly, using the manufacturer-level diagnostic protocol (UDS, ISO 14229, with a
 KWP2000 fallback). This works on most CAN-bus cars, roughly 2008 and newer.
 
@@ -60,7 +62,7 @@ KWP2000 fallback). This works on most CAN-bus cars, roughly 2008 and newer.
 ## Tools
 - **Adapter self-test** (**Tools → Test adapter…**, or the `test-adapter` command): checks what your adapter
   can do, with no car needed. It identifies clones (there was never a genuine "v1.5" chip) and STN-based
-  adapters such as OBDLink, and tests every command OBD Doctor uses. For each missing one, it says which
+  adapters such as OBDLink, and tests every command OBD EFT uses. For each missing one, it says which
   feature is affected, e.g. BMW ABS/airbag.
 - **Live data recording**: on the Live data tab, click **● Record**, drive, click **Stop recording**, then
   **Export CSV…** and open the file in Excel. On the command line: `live --record drive.csv`.
@@ -73,7 +75,7 @@ KWP2000 fallback). This works on most CAN-bus cars, roughly 2008 and newer.
 
 ## Automatic updates
 Releases are published at https://github.com/Dombrohub/obd-doctor/releases (set in `obd_doctor/update.py`).
-- At startup, at most once a day, OBD Doctor checks GitHub for a newer release. If there is one, a banner
+- At startup, at most once a day, OBD EFT checks GitHub for a newer release. If there is one, a banner
   offers **Update now**, **What's new** and **Later**. You can turn this off under **Help → Check for updates
   automatically**, and check on demand with **Help → Check for updates…** (or the `check-update` command).
 - **Update now** downloads the installer, verifies it against the SHA-256 checksum published with the
@@ -102,11 +104,11 @@ Every scan is saved on your computer (never uploaded) so you can see what change
 - The changes are included in the diagnosis and the AI explanation.
 
 Use the **History** tab, or `python -m obd_doctor history` on the command line. To skip saving, untick the box
-on the History tab or use `scan --no-save`. Scans are stored in `%APPDATA%\OBDDoctor\history`
-(`~/.config/obd_doctor/history` elsewhere); the newest 300 are kept.
+on the History tab or use `scan --no-save`. Scans are stored in `%APPDATA%\OBDEFT\history`
+(`~/.config/obd_eft/history` elsewhere); the newest 300 are kept.
 
 ## AI explanations (optional)
-After a scan, OBD Doctor can ask Anthropic's Claude to explain the results in plain English:
+After a scan, OBD EFT can ask Anthropic's Claude to explain the results in plain English:
 - what's wrong
 - how urgent it is ("Safe to drive" / "Drive gently and get it fixed soon" / "Stop driving")
 - the most likely cause, with the codes and readings that point to it
@@ -122,7 +124,7 @@ You can then ask follow-up questions.
 You need your own Anthropic API key from console.anthropic.com. Each explanation costs a few cents.
 Enter the key in **AI settings** (or run `python -m obd_doctor set-api-key`), or set the
 `ANTHROPIC_API_KEY` environment variable. The key is stored in your user profile:
-`%APPDATA%\OBDDoctor\config.json` on Windows, `~/.config/obd_doctor/config.json` elsewhere.
+`%APPDATA%\OBDEFT\config.json` on Windows, `~/.config/obd_eft/config.json` elsewhere.
 
 **What is sent:** trouble codes, freeze frame, live sensor readings, readiness monitors, the
 rule-based findings, and the vehicle and symptoms you type. **The VIN is never sent.**
@@ -130,10 +132,10 @@ Uses the `claude-opus-5-5` model; the settings are at the top of `obd_doctor/ai.
 AI answers can be wrong, so double-check before buying parts.
 
 ## Windows installer
-Run `OBDDoctor-Setup.exe`. It installs to `C:\Program Files\OBD Doctor`, adds Start Menu shortcuts
+Run `OBDEFT-Setup.exe`. It installs to `C:\Program Files\OBD EFT`, adds Start Menu shortcuts
 (app, command prompt, uninstall) and an optional desktop shortcut, and registers in
 **Settings > Apps** so it can be uninstalled normally.
-Silent install: `OBDDoctor-Setup.exe /S` (optional `/D=C:\Path`, which must be last and unquoted).
+Silent install: `OBDEFT-Setup.exe /S` (optional `/D=C:\Path`, which must be last and unquoted).
 
 To rebuild it, double-click `build_windows.bat` (needs Python, plus [NSIS](https://nsis.sourceforge.io)
 for the installer), or run the included GitHub Actions workflow.

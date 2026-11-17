@@ -1,7 +1,7 @@
 """Scan history: every scan is saved locally so changes can be tracked over time.
 
 Files live next to the settings file (see config.py), in a "history" folder:
-  Windows: %APPDATA%\\OBDDoctor\\history\\
+  Windows: %APPDATA%\\OBDEFT\\history\\
   macOS/Linux: ~/.config/obd_doctor/history/
 Nothing is uploaded anywhere.
 """

@@ -1,9 +1,9 @@
-OBD Doctor - Car Diagnostics
-Version 1.8.1
+OBD EFT - Car Diagnostics
+Version 1.9.0
 
 IMPORTANT - PLEASE READ
 
-OBD Doctor reads data from your vehicle's on-board diagnostics (OBD-II) system through an ELM327-compatible adapter and suggests likely causes for problems.
+OBD EFT reads data from your vehicle's on-board diagnostics (OBD-II) system through an ELM327-compatible adapter and suggests likely causes for problems.
 
 1. GUIDANCE ONLY. The diagnosis is based on trouble codes and sensor data and is provided as guidance. It is not a substitute for inspection by a qualified mechanic. Always have safety-related problems (brakes, steering, airbags, overheating, low oil pressure) checked by a professional.
 

@@ -1,4 +1,4 @@
-"""Graphical interface for OBD Doctor (Tkinter - included with Python).
+"""Graphical interface for OBD EFT (Tkinter - included with Python).
 
 Run with:  python -m obd_doctor        (or: python -m obd_doctor gui)
 
@@ -182,7 +182,7 @@ class App:
         self.live_tiles: dict[int, LiveTile] = {}
         self.busy = False
 
-        root.title(f"OBD Doctor {__version__} - Car Diagnostics")
+        root.title(f"OBD EFT {__version__} - Car Diagnostics")
         root.geometry("1100x760")
         root.minsize(860, 600)
         root.configure(bg=BG)
@@ -248,7 +248,7 @@ class App:
         self.update_info = None
         inner = tk.Frame(top, bg=PANEL, padx=16, pady=10)
         inner.pack(fill="x")
-        tk.Label(inner, text="OBD Doctor", bg=PANEL, fg=TEXT, font=self.f["title"]).pack(side="left")
+        tk.Label(inner, text="OBD EFT", bg=PANEL, fg=TEXT, font=self.f["title"]).pack(side="left")
         tk.Label(inner, text=f"  car diagnostics  \u00b7  version {__version__}", bg=PANEL, fg=MUTED,
                  font=self.f["normal"]).pack(side="left", pady=(6, 0))
 
@@ -782,7 +782,7 @@ class App:
         tab = ttk.Frame(self.nb, padding=10)
         self.tab_modules = tab
         self.nb.add(tab, text="ABS & airbag")
-        ttk.Label(tab, text="Standard OBD-II only covers the engine. OBD Doctor also asks the ABS and airbag computers "
+        ttk.Label(tab, text="Standard OBD-II only covers the engine. OBD EFT also asks the ABS and airbag computers "
                             "directly, in each manufacturer's own diagnostic language (UDS, GM GMLAN, BMW). This works "
                             "on most CAN-bus cars, roughly 2008 and newer. The car's VIN picks the brand.",
                   wraplength=1000, justify="left").pack(anchor="w")
@@ -954,7 +954,7 @@ class App:
                                 parent=self.root)
             return
         win = tk.Toplevel(self.root)
-        win.title(f"{code} - OBD Doctor")
+        win.title(f"{code} - OBD EFT")
         win.geometry("640x420")
         win.configure(bg=BG)
         t = tk.Text(win, wrap="word", bg=PANEL, fg=TEXT, relief="flat", padx=16, pady=14, font=self.f["normal"])
@@ -969,7 +969,7 @@ class App:
         p = self.tab_diag.inner
         box = tk.Frame(p, bg=PANEL, highlightbackground=BORDER, highlightthickness=1, padx=24, pady=20)
         box.pack(fill="x", padx=4, pady=8)
-        tk.Label(box, text="Welcome to OBD Doctor", bg=PANEL, fg=TEXT, font=self.f["title"]).pack(anchor="w")
+        tk.Label(box, text="Welcome to OBD EFT", bg=PANEL, fg=TEXT, font=self.f["title"]).pack(anchor="w")
         steps = [
             "1.  Plug your ELM327 adapter into the car's OBD-II port (under the dashboard, driver's side).",
             "2.  Turn the ignition ON or start the engine.",
@@ -1165,7 +1165,7 @@ class App:
         helpm.add_checkbutton(label="Check for updates automatically", variable=self.auto_update_var,
                               command=lambda: config.set("auto_update_check", bool(self.auto_update_var.get())))
         helpm.add_separator()
-        helpm.add_command(label="About OBD Doctor", command=self.about)
+        helpm.add_command(label="About OBD EFT", command=self.about)
         menubar.add_cascade(label="Tools", menu=tools)
         menubar.add_cascade(label="Help", menu=helpm)
         self.root.config(menu=menubar)
@@ -1178,7 +1178,7 @@ class App:
     def check_for_updates(self, manual=True):
         if manual and not update.is_configured():
             messagebox.showinfo("Check for updates",
-                                f"You have OBD Doctor {__version__}.\n\nAutomatic updates aren't set up for this copy "
+                                f"You have OBD EFT {__version__}.\n\nAutomatic updates aren't set up for this copy "
                                 "yet - get new versions from whoever gave you the app.", parent=self.root)
             return
         if manual:
@@ -1206,7 +1206,7 @@ class App:
             return
         self.update_info = info
         self._append_log(f"Update available: {info['version']}")
-        self.update_label.config(text=f"\u2b06  OBD Doctor {info['version']} is available "
+        self.update_label.config(text=f"\u2b06  OBD EFT {info['version']} is available "
                                       f"(you have {__version__}).")
         self.update_banner.pack(fill="x", after=self.top_frame)
 
@@ -1226,10 +1226,10 @@ class App:
             if url:
                 webbrowser.open(url)
             messagebox.showinfo("Update", "Your browser will open the download. Unzip the new version over the "
-                                          "old OBDDoctor folder (close the app first).", parent=self.root)
+                                          "old OBDEFT folder (close the app first).", parent=self.root)
             return
-        if not messagebox.askyesno("Update OBD Doctor",
-                                   f"Download and install OBD Doctor {info['version']} now?\n\nOBD Doctor will close "
+        if not messagebox.askyesno("Update OBD EFT",
+                                   f"Download and install OBD EFT {info['version']} now?\n\nOBD EFT will close "
                                    "while the installer runs. Your settings, API key and history are kept.",
                                    parent=self.root):
             return
@@ -1239,7 +1239,7 @@ class App:
         win.configure(bg=BG)
         win.resizable(False, False)
         win.transient(self.root)
-        ttk.Label(win, text=f"Downloading OBD Doctor {info['version']}…", padding=(16, 14, 16, 6)).pack(anchor="w")
+        ttk.Label(win, text=f"Downloading OBD EFT {info['version']}…", padding=(16, 14, 16, 6)).pack(anchor="w")
         bar = ttk.Progressbar(win, mode="determinate", length=380, maximum=100)
         bar.pack(padx=16, pady=(0, 6))
         lbl = ttk.Label(win, text="", style="Muted.TLabel", padding=(16, 0, 16, 14))
@@ -1278,8 +1278,8 @@ class App:
 
     def about(self):
         messagebox.showinfo(
-            "About OBD Doctor",
-            f"OBD Doctor {__version__}\n\nReads your car's engine, ABS and airbag computers through an ELM327 "
+            "About OBD EFT",
+            f"OBD EFT {__version__}\n\nReads your car's engine, ABS and airbag computers through an ELM327 "
             "OBD-II adapter and explains what's wrong.\n\nAI explanations by Anthropic's Claude (optional, uses your "
             f"own API key).\n\nSettings and history: {os.path.dirname(config.config_path())}\n\n"
             "Guidance only - not a substitute for a professional inspection.", parent=self.root)
@@ -1317,7 +1317,7 @@ class App:
         from .adaptercheck import format_result
         self._append_log("Adapter test:\n" + format_result(payload))
         win = tk.Toplevel(self.root)
-        win.title("Adapter test - OBD Doctor")
+        win.title("Adapter test - OBD EFT")
         win.configure(bg=BG)
         win.geometry("900x480")
         t = tk.Text(win, wrap="word", bg=PANEL, fg=TEXT, relief="flat", padx=16, pady=14, font=self.f["normal"])
@@ -1344,7 +1344,7 @@ class App:
 
     def create_shortcuts(self):
         if sys.platform != "win32" or not getattr(sys, "frozen", False):
-            messagebox.showinfo("Shortcuts", "Shortcuts can be created by the installed Windows app (OBDDoctor.exe).",
+            messagebox.showinfo("Shortcuts", "Shortcuts can be created by the installed Windows app (OBDEFT.exe).",
                                 parent=self.root)
             return
         import subprocess
@@ -1353,9 +1353,9 @@ class App:
         script = (
             "$w = New-Object -ComObject WScript.Shell; "
             "foreach ($d in @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'))) { "
-            "$s = $w.CreateShortcut((Join-Path $d 'OBD Doctor.lnk')); "
+            "$s = $w.CreateShortcut((Join-Path $d 'OBD EFT.lnk')); "
             f"$s.TargetPath = '{exe}'; $s.WorkingDirectory = '{folder}'; $s.IconLocation = '{exe},0'; "
-            "$s.Description = 'OBD Doctor - car diagnostics'; $s.Save() }")
+            "$s.Description = 'OBD EFT - car diagnostics'; $s.Save() }")
         try:
             r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
                                capture_output=True, text=True, timeout=30, creationflags=0x08000000)
@@ -1365,11 +1365,11 @@ class App:
             ok, detail = False, str(exc)
         if ok:
             self._append_log("Created desktop and Start Menu shortcuts")
-            messagebox.showinfo("Shortcuts", "Created an \u201cOBD Doctor\u201d shortcut on your desktop and in the "
+            messagebox.showinfo("Shortcuts", "Created an \u201cOBD EFT\u201d shortcut on your desktop and in the "
                                              "Start Menu.", parent=self.root)
         else:
             self._error("Shortcuts", "Couldn't create the shortcuts automatically.\n\nYou can make one by hand: "
-                                     "right-click OBDDoctor.exe \u2192 Show more options \u2192 Send to \u2192 Desktop "
+                                     "right-click OBDEFT.exe \u2192 Show more options \u2192 Send to \u2192 Desktop "
                                      f"(create shortcut).\n\nDetails: {detail}")
 
     # ------------------------------------------------------------ live recording

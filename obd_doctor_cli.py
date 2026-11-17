@@ -1,4 +1,4 @@
-"""Command-line entry point (used for the obd-doctor-cli.exe build)."""
+"""Command-line entry point (used for the obd-eft-cli.exe build)."""
 import sys
 
 for stream in (sys.stdout, sys.stderr):  # Windows consoles may not be UTF-8

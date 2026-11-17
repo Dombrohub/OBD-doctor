@@ -1,6 +1,6 @@
 """Adapter self-test: what the OBD adapter can do, without needing a car.
 
-Checks the adapter's identity and every command OBD Doctor relies on, and says
+Checks the adapter's identity and every command OBD EFT relies on, and says
 which features are affected if one is missing. Cheap ELM327 clones often claim
 support they don't have; the most reliable check is simply sending each command.
 """
@@ -76,12 +76,12 @@ def _verdict(version: str, stn: str | None, results: list[dict]) -> tuple[str, l
     notes = []
     missing = [r for r in results if not r["supported"]]
     if stn:
-        notes.append(f"STN-based adapter ({stn}) - these are high quality and support everything OBD Doctor uses.")
+        notes.append(f"STN-based adapter ({stn}) - these are high quality and support everything OBD EFT uses.")
     elif "1.5" in version:
         notes.append("Reports version 1.5. Elm Electronics never made a v1.5 chip, so this is a clone. "
                      "Clones vary a lot - the tests below show what this one really supports.")
     if not missing:
-        return "Excellent - supports every feature OBD Doctor uses", notes
+        return "Excellent - supports every feature OBD EFT uses", notes
     if all(r["feature"] in ("CAN extended addressing", "Raw CAN frames") for r in missing):
         return "Good - engine scanning and most ABS/airbag modules work", notes + [
             "Missing features only affect the brands listed below. For full support, consider an OBDLink, "

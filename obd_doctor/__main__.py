@@ -1,4 +1,4 @@
-"""OBD Doctor - read your car's computer and figure out what's wrong.
+"""OBD EFT - read your car's computer and figure out what's wrong.
 
 Usage examples:
   python -m obd_doctor scan --port /dev/ttyUSB0        # USB adapter (Linux)
@@ -306,12 +306,12 @@ def cmd_check_update(args):
     try:
         info = update.check()
     except update.UpdateError as e:
-        print(f"OBD Doctor {__version__}. {e}")
+        print(f"OBD EFT {__version__}. {e}")
         return
     if not info:
         print(f"You have the latest version ({__version__}).")
         return
-    print(f"OBD Doctor {info['version']} is available (you have {__version__}).")
+    print(f"OBD EFT {info['version']} is available (you have {__version__}).")
     if info["notes"]:
         print("\nWhat's new:\n" + info["notes"][:2000])
     print(f"\nDownload: {info.get('installer_url') or info.get('page')}")
@@ -430,7 +430,7 @@ def main(argv=None):
     p = argparse.ArgumentParser(prog="obd_doctor", description="Read your car's computer and diagnose problems "
                                 "using an ELM327 OBD-II adapter.")
     from . import __version__
-    p.add_argument("--version", action="version", version=f"OBD Doctor {__version__}")
+    p.add_argument("--version", action="version", version=f"OBD EFT {__version__}")
     sub = p.add_subparsers(dest="cmd")
     conn = argparse.ArgumentParser(add_help=False)
     conn.add_argument("--port", "-p", default="auto",

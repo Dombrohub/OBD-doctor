@@ -6,7 +6,7 @@ and sent to Claude, which explains it in plain language for the car owner.
 The VIN is never sent. Follow-up questions continue the same conversation.
 
 API key lookup order: ANTHROPIC_API_KEY environment variable, then the key
-saved in OBD Doctor's settings (see config.py).
+saved in OBD EFT's settings (see config.py).
 """
 
 from __future__ import annotations

@@ -1,26 +1,32 @@
-; OBD Doctor - Windows installer (NSIS 3)
+; OBD EFT - Windows installer (NSIS 3)
 ; Build:  makensis installer/obd_doctor.nsi      (from the project root)
-; Output: dist/OBDDoctor-Setup.exe
+; Output: dist/OBDEFT-Setup.exe
 ;
-; Silent install:    OBDDoctor-Setup.exe /S  [/D=C:\Path\To\Install]
-; Silent uninstall:  "C:\Program Files\OBD Doctor\uninstall.exe" /S
+; Silent install:    OBDEFT-Setup.exe /S  [/D=C:\Path\To\Install]
+; Silent uninstall:  "C:\Program Files\OBD EFT\uninstall.exe" /S
+;
+; The app used to be called "OBD Doctor". Installing removes that older copy
+; (folder, shortcuts, Apps & features entry) so the user ends up with one app.
 
 Unicode true
 SetCompressor /SOLID lzma
 
-!define APP_NAME      "OBD Doctor"
-!define APP_VERSION   "1.8.1"
-!define APP_PUBLISHER "OBD Doctor"
-!define APP_EXE       "OBDDoctor.exe"
-!define CLI_EXE       "obd-doctor-cli.exe"
-!define UNINST_KEY    "Software\Microsoft\Windows\CurrentVersion\Uninstall\OBDDoctor"
-!define APP_KEY       "Software\OBDDoctor"
+!define APP_NAME      "OBD EFT"
+!define APP_VERSION   "1.9.0"
+!define APP_PUBLISHER "OBD EFT"
+!define APP_EXE       "OBDEFT.exe"
+!define CLI_EXE       "obd-eft-cli.exe"
+!define UNINST_KEY    "Software\Microsoft\Windows\CurrentVersion\Uninstall\OBDEFT"
+!define APP_KEY       "Software\OBDEFT"
+!define OLD_NAME      "OBD Doctor"
+!define OLD_UNINST    "Software\Microsoft\Windows\CurrentVersion\Uninstall\OBDDoctor"
+!define OLD_KEY       "Software\OBDDoctor"
 !define DIST          "..\dist"
-!define APPDIR        "..\dist\OBDDoctor"
+!define APPDIR        "..\dist\OBDEFT"
 !define ASSETS        "..\obd_doctor\assets"
 
 Name "${APP_NAME}"
-OutFile "${DIST}\OBDDoctor-Setup.exe"  ; fixed name: each new version replaces the file
+OutFile "${DIST}\OBDEFT-Setup.exe"  ; fixed name: each new version replaces the file
 InstallDir "$PROGRAMFILES64\${APP_NAME}"
 InstallDirRegKey HKLM "${APP_KEY}" "InstallDir"
 RequestExecutionLevel admin
@@ -89,12 +95,34 @@ Section "${APP_NAME} (required)" SecMain
   File "/oname=License.txt" "license.txt"
   WriteUninstaller "$INSTDIR\uninstall.exe"
 
+  ; Remove the previous install from when the app was called "OBD Doctor"
+  ReadRegStr $1 HKLM "${OLD_KEY}" "InstallDir"
+  ${If} $1 != ""
+  ${AndIf} $1 != $INSTDIR
+    Delete "$1\OBDDoctor.exe"
+    Delete "$1\obd-doctor-cli.exe"
+    RMDir /r "$1\_internal"
+    Delete "$1\icon.ico"
+    Delete "$1\License.txt"
+    Delete "$1\uninstall.exe"
+    RMDir "$1"  ; only removed if empty
+  ${EndIf}
+  Delete "$INSTDIR\OBDDoctor.exe"       ; old program files, if installed into the same folder
+  Delete "$INSTDIR\obd-doctor-cli.exe"
+  Delete "$SMPROGRAMS\${OLD_NAME}\${OLD_NAME}.lnk"
+  Delete "$SMPROGRAMS\${OLD_NAME}\${OLD_NAME} Command Prompt.lnk"
+  Delete "$SMPROGRAMS\${OLD_NAME}\Uninstall ${OLD_NAME}.lnk"
+  RMDir "$SMPROGRAMS\${OLD_NAME}"
+  Delete "$DESKTOP\${OLD_NAME}.lnk"
+  DeleteRegKey HKLM "${OLD_UNINST}"
+  DeleteRegKey HKLM "${OLD_KEY}"
+
   ; Start Menu
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
   CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0 \
     SW_SHOWNORMAL "" "Read your car's computer and diagnose problems"
   CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME} Command Prompt.lnk" "$SYSDIR\cmd.exe" \
-    '/k "cd /d "$INSTDIR" && echo OBD Doctor command line - type: ${CLI_EXE} --help"' "$INSTDIR\icon.ico" 0
+    '/k "cd /d "$INSTDIR" && echo OBD EFT command line - type: ${CLI_EXE} --help"' "$INSTDIR\icon.ico" 0
   CreateShortcut "$SMPROGRAMS\${APP_NAME}\Uninstall ${APP_NAME}.lnk" "$INSTDIR\uninstall.exe"
 
   ; Apps & features entry

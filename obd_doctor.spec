@@ -1,7 +1,7 @@
-# PyInstaller build recipe for OBD Doctor.
-#   pyinstaller obd_doctor.spec   ->  dist/OBDDoctor/OBDDoctor.exe        (GUI)
-#                                     dist/OBDDoctor/obd-doctor-cli.exe   (command line)
-#                                     dist/OBDDoctor/_internal/           (shared Python runtime + libraries)
+# PyInstaller build recipe for OBD EFT.
+#   pyinstaller obd_doctor.spec   ->  dist/OBDEFT/OBDEFT.exe        (GUI)
+#                                     dist/OBDEFT/obd-eft-cli.exe   (command line)
+#                                     dist/OBDEFT/_internal/           (shared Python runtime + libraries)
 #
 # Both programs live in one folder and share a single copy of Python and the
 # libraries, so the download is about half the size of two self-contained .exe
@@ -20,12 +20,12 @@ EXCLUDES = ["numpy", "PIL", "matplotlib", "pytest"]
 gui_a = Analysis(["obd_doctor_gui.pyw"], pathex=["."], datas=DATAS, hiddenimports=HIDDEN, excludes=EXCLUDES)
 cli_a = Analysis(["obd_doctor_cli.py"], pathex=["."], datas=DATAS, hiddenimports=HIDDEN, excludes=EXCLUDES)
 
-gui_exe = EXE(PYZ(gui_a.pure), gui_a.scripts, [], exclude_binaries=True, name="OBDDoctor",
+gui_exe = EXE(PYZ(gui_a.pure), gui_a.scripts, [], exclude_binaries=True, name="OBDEFT",
               console=False, icon=ICON, version=VERSION, upx=False)
-cli_exe = EXE(PYZ(cli_a.pure), cli_a.scripts, [], exclude_binaries=True, name="obd-doctor-cli",
+cli_exe = EXE(PYZ(cli_a.pure), cli_a.scripts, [], exclude_binaries=True, name="obd-eft-cli",
               console=True, icon=ICON, version=VERSION, upx=False)
 
 COLLECT(gui_exe, cli_exe,
         gui_a.binaries, gui_a.datas,
         cli_a.binaries, cli_a.datas,
-        name="OBDDoctor", upx=False)
+        name="OBDEFT", upx=False)

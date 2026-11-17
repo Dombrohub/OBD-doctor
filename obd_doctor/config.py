@@ -1,8 +1,11 @@
 """Per-user settings (API key, vehicle description).
 
 Stored as JSON in:
-  Windows: %APPDATA%\\OBDDoctor\\config.json
-  macOS/Linux: ~/.config/obd_doctor/config.json
+  Windows: %APPDATA%\\OBDEFT\\config.json
+  macOS/Linux: ~/.config/obd_eft/config.json
+
+The app was called "OBD Doctor" before; its old settings folder (OBDDoctor / obd_doctor)
+is moved to the new name automatically, together with the scan history.
 """
 
 from __future__ import annotations
@@ -12,12 +15,23 @@ import os
 import sys
 
 
-def config_path() -> str:
+def _dirs() -> tuple[str, str]:
+    """(current settings folder, folder used before the rename)."""
     if sys.platform == "win32":
         base = os.environ.get("APPDATA") or os.path.expanduser("~")
-        return os.path.join(base, "OBDDoctor", "config.json")
+        return os.path.join(base, "OBDEFT"), os.path.join(base, "OBDDoctor")
     base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
-    return os.path.join(base, "obd_doctor", "config.json")
+    return os.path.join(base, "obd_eft"), os.path.join(base, "obd_doctor")
+
+
+def config_path() -> str:
+    new, old = _dirs()
+    if not os.path.exists(new) and os.path.isdir(old):
+        try:
+            os.rename(old, new)  # keep settings, API key and history from "OBD Doctor"
+        except OSError:
+            pass
+    return os.path.join(new if os.path.isdir(new) or not os.path.isdir(old) else old, "config.json")
 
 
 def load() -> dict:

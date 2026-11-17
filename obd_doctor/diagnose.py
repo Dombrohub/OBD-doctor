@@ -209,7 +209,7 @@ def diagnose(scan: dict) -> list[Finding]:
                              [], [], mcodes))
     if mods.get("supported") and not mods.get("list") and not mods.get("searched"):
         f.append(Finding("info", "No ABS or airbag module answered the quick check",
-                         "OBD Doctor asked the ABS and airbag addresses used by Ford/Mazda, Toyota/Lexus, Hyundai/Kia, "
+                         "OBD EFT asked the ABS and airbag addresses used by Ford/Mazda, Toyota/Lexus, Hyundai/Kia, "
                          "VW group and Nissan. Your car may use different addresses.",
                          [], ["Run the full module search on the ABS & airbag tab (takes about a minute)",
                               mods.get("note", "")]))
