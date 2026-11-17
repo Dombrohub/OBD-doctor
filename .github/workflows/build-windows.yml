@@ -44,8 +44,14 @@ jobs:
           dist\OBDDoctor\obd-doctor-cli.exe --version
           dist\OBDDoctor\obd-doctor-cli.exe scan --port demo --no-save
 
-      - name: Build installer (NSIS is preinstalled on GitHub's Windows runners)
-        run: makensis installer\obd_doctor.nsi
+      - name: Install NSIS (installer builder) if missing
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe")) { choco install nsis -y --no-progress }
+
+      - name: Build installer
+        shell: pwsh
+        run: '& "${env:ProgramFiles(x86)}\NSIS\makensis.exe" installer\obd_doctor.nsi' 
 
       - name: Portable zip and checksum
         shell: pwsh
