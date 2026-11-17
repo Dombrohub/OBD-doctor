@@ -1806,13 +1806,32 @@ def _set_icon(root):
         pass
 
 
+def _broken_install(exc):
+    """Explain a damaged installation in plain words and offer the download page."""
+    url = "https://github.com/Dombrohub/obd-doctor/releases/latest"
+    msg = ("OBD EFT can't start because some of its files are missing - usually after an installation or update "
+           "was interrupted.\n\nPlease reinstall it: download OBDEFT-Setup.exe and run it. Your settings and scan "
+           "history are kept.\n\nOpen the download page now?")
+    if sys.platform == "win32":
+        import ctypes
+        if ctypes.windll.user32.MessageBoxW(None, msg, "OBD EFT - please reinstall", 0x04 | 0x30) == 6:  # Yes
+            import webbrowser
+            webbrowser.open(url)
+    else:
+        print(f"{msg}\n{url}\n(details: {exc})", file=sys.stderr)
+
+
 def run():
     try:  # sharper text on Windows high-DPI screens (must happen before Tk starts)
         from ctypes import windll
         windll.shcore.SetProcessDpiAwareness(1)
     except Exception:
         pass
-    root = tk.Tk()
+    try:
+        root = tk.Tk()
+    except tk.TclError as exc:  # e.g. an interrupted install left the window-drawing files missing
+        _broken_install(exc)
+        return
     _set_icon(root)
     App(root)
     root.mainloop()

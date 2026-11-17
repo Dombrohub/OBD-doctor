@@ -1,11 +1,11 @@
 VSVersionInfo(
-  ffi=FixedFileInfo(filevers=(1, 11, 1, 0), prodvers=(1, 11, 1, 0)),
+  ffi=FixedFileInfo(filevers=(1, 11, 2, 0), prodvers=(1, 11, 2, 0)),
   kids=[
     StringFileInfo([StringTable('040904B0', [
       StringStruct('FileDescription', 'OBD EFT - Car Diagnostics'),
       StringStruct('ProductName', 'OBD EFT'),
-      StringStruct('FileVersion', '1.11.1'),
-      StringStruct('ProductVersion', '1.11.1'),
+      StringStruct('FileVersion', '1.11.2'),
+      StringStruct('ProductVersion', '1.11.2'),
       StringStruct('OriginalFilename', 'OBDEFT.exe')])]),
     VarFileInfo([VarStruct('Translation', [1033, 1200])])
   ]

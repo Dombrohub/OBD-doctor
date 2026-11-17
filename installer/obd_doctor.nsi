@@ -12,7 +12,7 @@ Unicode true
 SetCompressor /SOLID lzma
 
 !define APP_NAME      "OBD EFT"
-!define APP_VERSION   "1.11.1"
+!define APP_VERSION   "1.11.2"
 !define APP_PUBLISHER "OBD EFT"
 !define APP_EXE       "OBDEFT.exe"
 !define CLI_EXE       "obd-eft-cli.exe"
