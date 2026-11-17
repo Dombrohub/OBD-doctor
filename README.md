@@ -79,9 +79,10 @@ Releases are published at https://github.com/Dombrohub/obd-doctor/releases (set 
 - **Update now** downloads the installer, verifies it against the SHA-256 checksum published with the
   release (a damaged or tampered download is deleted), runs it, and closes the app. Settings and history are
   kept. The portable version opens the download page instead.
-- **Publishing a version:** bump the version numbers, then push a tag (`git tag v1.9.0`,
-  `git push origin v1.9.0`). The GitHub Actions workflow builds the installer, portable zip and checksum,
-  and publishes the release. Installed copies pick it up automatically.
+- **Publishing a version:** bump the version numbers (`obd_doctor/__init__.py`, `installer/obd_doctor.nsi`,
+  `version_info.txt`) and push to `main`. The GitHub Actions workflow builds and tests the app on Windows,
+  then publishes a release with the installer, portable zip and checksum. Installed copies pick it up
+  automatically. Pushes without a version change are built and tested, but not released.
 
 
 ## Getting help: support file
