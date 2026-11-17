@@ -1,4 +1,4 @@
-"""Reading trouble codes from ABS and airbag (SRS) modules.
+"""Reading trouble codes from ABS, airbag (SRS) and transmission (TCM) modules.
 
 Generic OBD-II (mode 03) only reaches emissions-related computers. ABS and airbag
 modules have to be asked directly. Three schemes are supported, all on the CAN bus:
@@ -36,15 +36,20 @@ KNOWN_MODULES = [
     ("ABS", 0x713, 0x77D, "VW", "VW / Audi / Skoda / Seat"),
     ("Airbag", 0x715, 0x77F, "VW", "VW / Audi / Skoda / Seat"),
     ("ABS", 0x740, 0x760, "Nissan", "Nissan / Infiniti"),
+    # Transmission control module at the standard ISO 15765 address - used by most brands
+    ("Transmission", 0x7E1, 0x7E9, "ALL", "standard transmission address"),
     ("Airbag", 0x752, 0x772, "Nissan", "Nissan / Infiniti"),
 ]
 # GM GMLAN: (system, request id, module name) - USDT reply on id + 0x400, UUDT codes on id + 0x300
-GM_MODULES = [("ABS", 0x243, "EBCM"), ("Airbag", 0x247, "SDM")]
+# GM GMLAN: (system, request id, response id, module name). Codes come back as UUDT frames on 0x500 + low byte
+# of the response id (EBCM 0x643 -> 0x543, TCM 0x7EA -> 0x5EA).
+GM_MODULES = [("ABS", 0x243, 0x643, "EBCM"), ("Airbag", 0x247, 0x647, "SDM"), ("Transmission", 0x7E2, 0x7EA, "TCM")]
 # BMW / MINI: (system, module address, module name)
-BMW_MODULES = [("ABS", 0x29, "DSC"), ("Airbag", 0x01, "ACSM")]
+BMW_MODULES = [("ABS", 0x29, "DSC"), ("Airbag", 0x01, "ACSM"), ("Transmission", 0x18, "EGS")]
 
 ABS_WORDS = ("ABS", "ESP", "ESC", "EBCM", "BRAKE", "VSA", "DSC", "VSC", "STABIL")
 AIRBAG_WORDS = ("SRS", "AIRBAG", "AIR BAG", "RCM", "ACU", "ORC", "RESTRAINT", "OCS", "SDM", "ACSM", "MRS")
+TRANS_WORDS = ("TCM", "TCU", "EGS", "TRANS", "GEARBOX", "DSG", "CVT", "AUTOMATIC")
 
 STATUS_BITS = {0x01: "failing right now", 0x04: "pending", 0x08: "confirmed", 0x80: "warning light requested"}
 
@@ -83,8 +88,12 @@ def classify(name: str | None, codes: list[str], guess: str | None) -> str:
         return "Airbag"
     if any(w in up for w in ABS_WORDS):
         return "ABS"
+    if any(w in up for w in TRANS_WORDS):
+        return "Transmission"
     if guess:
         return guess
+    if codes and all(c[:3] in ("P07", "P08", "P09") for c in codes):
+        return "Transmission"
     if codes and all(c.startswith("C") for c in codes):
         return "ABS"
     if codes and all(c.startswith("B00") for c in codes):
@@ -257,8 +266,8 @@ class ModuleScanner:
         return self._finish(mod)
 
     # ---------------------------------------------------------------- GM (GMLAN)
-    def read_gm_module(self, req: int, name: str, guess: str) -> dict:
-        resp, uudt = req + 0x400, req + 0x300
+    def read_gm_module(self, req: int, resp: int, name: str, guess: str) -> dict:
+        uudt = 0x500 | (resp & 0xFF)
         mod = self._new(scheme="gm", req=f"{req:03X}", resp=f"{resp:03X}", guess=guess, family="GM / Holden (GMLAN)",
                         name=name)
         self._reset_mode()
@@ -345,16 +354,17 @@ class ModuleScanner:
         codes = [d["code"].split("-")[0] for d in mod["dtcs"] if not d["code"].startswith("BMW-")]
         mod["system"] = classify(mod["name"], codes, mod["guess"])
         name = f" “{mod['name']}”" if mod["name"] else ""
-        system = {"ABS": "ABS / brakes", "Airbag": "Airbag (SRS)", "Other": "Module"}[mod["system"]]
+        system = {"ABS": "ABS / brakes", "Airbag": "Airbag (SRS)", "Transmission": "Transmission (TCM)",
+                  "Other": "Module"}[mod["system"]]
         mod["label"] = f"{system}{name} @ {mod['req']}"
         return mod
 
     # ---------------------------------------------------------------- clearing
     def clear_module(self, mod: dict) -> bool:
         if mod.get("scheme") == "gm":
-            req = int(mod["req"], 16)
-            self._target(req, req + 0x400)
-            return any(m[:1] == b"\x44" for m in self._request("04", f"{req + 0x400:03X}", 1000))
+            req, resp = int(mod["req"], 16), int(mod["resp"], 16)
+            self._target(req, resp)
+            return any(m[:1] == b"\x44" for m in self._request("04", f"{resp:03X}", 1000))
         if mod.get("scheme") == "bmw":
             addr = int(mod["req"].split()[-1], 16)
             ok = any(m[:1] == b"\x54" for m in self._bmw_request("14FFFFFF", addr, 1000))
@@ -406,8 +416,8 @@ class ModuleScanner:
     @staticmethod
     def _plan(family: str | None) -> list[tuple]:
         """Modules to ask. The VIN's brand first; every brand's addresses if it's unknown."""
-        uds = [("uds", r, s, g, name) for g, r, s, k, name in KNOWN_MODULES if family in (None, k)]
-        gm = [("gm", r, n, g) for g, r, n in GM_MODULES]
+        uds = [("uds", r, s, g, name) for g, r, s, k, name in KNOWN_MODULES if family in (None, k) or k == "ALL"]
+        gm = [("gm", r, resp, n, g) for g, r, resp, n in GM_MODULES]
         bmw = [("bmw", a, n, g) for g, a, n in BMW_MODULES]
         if family == "GM":
             return gm
@@ -424,9 +434,9 @@ class ModuleScanner:
             self.progress(f"Checking {guess} at {req:03X} ({fam})…")
             return self.read_module(req, resp, guess, fam)
         if kind == "gm":
-            _, req, name, guess = item
+            _, req, resp, name, guess = item
             self.progress(f"Checking GM {name} at {req:03X}…")
-            return self.read_gm_module(req, name, guess)
+            return self.read_gm_module(req, resp, name, guess)
         _, addr, name, guess = item
         self.progress(f"Checking BMW {name} (address {addr:02X})…")
         return self.read_bmw_module(addr, name, guess)
@@ -477,7 +487,7 @@ def merge_into_dtcs(scan: dict) -> None:
     """Add module codes to scan['dtcs'] so they show up in reports, diagnosis and the AI summary."""
     mods = (scan.get("modules") or {}).get("list", [])
     for kind in ("stored", "pending"):
-        for key in [k for k in scan["dtcs"][kind] if k.startswith(("ABS / brakes", "Airbag (SRS)", "Module "))]:
+        for key in [k for k in scan["dtcs"][kind] if k.startswith(("ABS / brakes", "Airbag (SRS)", "Module ", "Transmission (TCM) @"))]:
             del scan["dtcs"][kind][key]
     for m in mods:
         stored = [d["code"] for d in m["dtcs"] if d["confirmed"] or (d["active"] and not d["pending"])]

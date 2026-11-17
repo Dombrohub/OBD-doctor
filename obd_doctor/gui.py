@@ -802,19 +802,19 @@ class App:
     def _build_modules_tab(self):
         tab = ttk.Frame(self.nb, padding=10)
         self.tab_modules = tab
-        self.nb.add(tab, text="ABS & airbag")
-        ttk.Label(tab, text="Standard OBD-II only covers the engine. OBD EFT also asks the ABS and airbag computers "
-                            "directly, in each manufacturer's own diagnostic language (UDS, GM GMLAN, BMW). This works "
+        self.nb.add(tab, text="ABS · Airbag · Trans")
+        ttk.Label(tab, text="Standard OBD-II only covers the engine. OBD EFT also asks the ABS, airbag and transmission "
+                            "computers directly, in each manufacturer's own diagnostic language (UDS, GM GMLAN, BMW). This works "
                             "on most CAN-bus cars, roughly 2008 and newer. The car's VIN picks the brand.",
                   wraplength=1000, justify="left").pack(anchor="w")
         bar = ttk.Frame(tab)
         bar.pack(fill="x", pady=8)
         self.mod_search_btn = ttk.Button(bar, text="Full module search", command=self.module_search)
         self.mod_search_btn.pack(side="left")
-        self.mod_clear_btn = ttk.Button(bar, text="Clear ABS/airbag codes…", style="Danger.TButton",
+        self.mod_clear_btn = ttk.Button(bar, text="Clear module codes…", style="Danger.TButton",
                                         command=self.clear_module_codes)
         self.mod_clear_btn.pack(side="left", padx=8)
-        self.mod_info = ttk.Label(bar, text="Run a scan to check the ABS and airbag modules.", style="Muted.TLabel")
+        self.mod_info = ttk.Label(bar, text="Run a scan to check the ABS, airbag and transmission modules.", style="Muted.TLabel")
         self.mod_info.pack(side="left", padx=6)
         frame = ttk.Frame(tab)
         frame.pack(fill="both", expand=True)
@@ -841,7 +841,7 @@ class App:
         tree.delete(*tree.get_children())
         mods = (self.scan or {}).get("modules")
         if not mods:
-            self.mod_info.config(text="The ABS & airbag check was skipped.")
+            self.mod_info.config(text="The module check was skipped.")
             return
         self.mod_note.config(text=mods.get("note", ""))
         if not mods["supported"]:
@@ -849,7 +849,7 @@ class App:
             return
         n = sum(len(m["dtcs"]) for m in mods["list"])
         if not mods["list"]:
-            self.mod_info.config(text="No ABS or airbag module answered" + (
+            self.mod_info.config(text="No ABS, airbag or transmission module answered" + (
                 " the full search." if mods.get("searched") else " the quick check. Try the full module search."))
         else:
             self.mod_info.config(text=f"{len(mods['list'])} module(s) found, {n} code(s)"
@@ -892,14 +892,14 @@ class App:
             return
         names = "\n".join(f"  \u2022 {m['label']}" for m in mods)
         if not messagebox.askyesno(
-                "Clear ABS / airbag codes?",
+                "Clear ABS / airbag / transmission codes?",
                 f"This clears the trouble codes in:\n{names}\n\n"
                 "\u2022 It does NOT fix anything. If the fault is still there, the warning light comes back.\n"
                 "\u2022 For airbags: while the light is on, the airbags may not work. Get the fault repaired.\n"
                 "\u2022 Airbag modules that stored crash data after an accident cannot be cleared this way.\n\n"
                 "Turn the engine OFF with the ignition ON, then click Yes.", icon="warning", parent=self.root):
             return
-        self._set_busy(True, "Clearing ABS/airbag codes…")
+        self._set_busy(True, "Clearing module codes…")
         elm = self.elm
         self.worker.submit("modclear", lambda: ModuleScanner(
             elm, lambda m: self.ui_queue.put(("progress", "ok", m))).clear_modules(mods))
@@ -911,7 +911,7 @@ class App:
             return
         lines = [f"{label}: {'cleared' if ok else 'NOT confirmed'}" for label, ok in payload.items()]
         self._append_log("Module clear: " + "; ".join(lines))
-        messagebox.showinfo("ABS / airbag codes", "\n".join(lines) + "\n\nRe-scanning…", parent=self.root)
+        messagebox.showinfo("Module codes", "\n".join(lines) + "\n\nRe-scanning…", parent=self.root)
         self.run_scan()
 
     # ------------------------------------------------------------ live data

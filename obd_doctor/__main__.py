@@ -113,11 +113,11 @@ def print_report(scan, findings):
 
     mods = scan.get("modules")
     if mods:
-        header("ABS & AIRBAG MODULES")
+        header("ABS, AIRBAG & TRANSMISSION MODULES")
         if not mods["supported"]:
             print(f"  {mods['note']}")
         elif not mods["list"]:
-            print("  No ABS or airbag module answered" + (" the full search." if mods.get("searched") else
+            print("  No ABS, airbag or transmission module answered" + (" the full search." if mods.get("searched") else
                   " at the common addresses. Try: scan --discover (full module search, about a minute)."))
             print(c(f"  {mods['note']}", "dim"))
         for m in mods["list"]:
@@ -342,10 +342,10 @@ def cmd_history(args):
 
 
 def cmd_clear_modules(args):
-    print(c("WARNING: This clears codes in the ABS and airbag modules and turns off their warning lights.\n"
+    print(c("WARNING: This clears codes in the ABS, airbag and transmission modules and turns off their warning lights.\n"
             "It does NOT fix anything. If the fault is still there, the light comes back - for airbags that means\n"
             "the airbags may not work. Airbag modules that stored crash data cannot be cleared this way.", "medium"))
-    if not args.yes and input("Clear ABS/airbag codes now? Engine OFF, ignition ON. [y/N] ").strip().lower() != "y":
+    if not args.yes and input("Clear ABS/airbag/transmission codes now? Engine OFF, ignition ON. [y/N] ").strip().lower() != "y":
         print("Cancelled.")
         return
     from .modules import ModuleScanner
@@ -355,7 +355,7 @@ def cmd_clear_modules(args):
         found = sc.scan_modules(discover=args.discover, progress=progress, vin=sc.read_vin())
         targets = [m for m in found["list"] if m["dtcs"]]
         if not targets:
-            print("No ABS/airbag codes to clear." if found["supported"] else found["note"])
+            print("No ABS/airbag/transmission codes to clear." if found["supported"] else found["note"])
             return
         for label, ok in ModuleScanner(elm, progress).clear_modules(targets).items():
             print(f"  {label}: " + (c("cleared", "green") if ok else c("not confirmed", "high")))
@@ -469,7 +469,7 @@ def main(argv=None):
     s.add_argument("--limit", type=int, default=30, help="How many recent scans to show")
     s.add_argument("--clear", action="store_true", help="Delete all saved scans")
     s.set_defaults(fn=cmd_history)
-    s = sub.add_parser("clear-modules", parents=[conn], help="Clear ABS and airbag codes")
+    s = sub.add_parser("clear-modules", parents=[conn], help="Clear ABS, airbag and transmission codes")
     s.add_argument("--yes", "-y", action="store_true", help="Don't ask for confirmation")
     s.add_argument("--discover", action="store_true", help="Search every address for modules first")
     s.set_defaults(fn=cmd_clear_modules)

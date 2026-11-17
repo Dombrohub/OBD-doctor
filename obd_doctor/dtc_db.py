@@ -124,7 +124,34 @@ DESCRIPTIONS = {
     "P0601": "Internal Control Module Memory Check Sum Error",
     "P0603": "Internal Control Module Keep Alive Memory (KAM) Error",
     "P0606": "Control Module Processor",
+    "P0218": "Transmission Fluid Over Temperature Condition",
     "P0700": "Transmission Control System (MIL Request)",
+    "P0711": "Transmission Fluid Temperature Sensor 'A' Circuit Range/Performance",
+    "P0712": "Transmission Fluid Temperature Sensor 'A' Circuit Low",
+    "P0713": "Transmission Fluid Temperature Sensor 'A' Circuit High",
+    "P0717": "Input/Turbine Speed Sensor 'A' Circuit No Signal",
+    "P0722": "Output Speed Sensor Circuit No Signal",
+    "P0731": "Gear 1 Incorrect Ratio",
+    "P0732": "Gear 2 Incorrect Ratio",
+    "P0733": "Gear 3 Incorrect Ratio",
+    "P0734": "Gear 4 Incorrect Ratio",
+    "P0735": "Gear 5 Incorrect Ratio",
+    "P0736": "Reverse Incorrect Ratio",
+    "P0742": "Torque Converter Clutch Circuit Stuck On",
+    "P0743": "Torque Converter Clutch Circuit Electrical",
+    "P0748": "Pressure Control Solenoid 'A' Electrical",
+    "P0751": "Shift Solenoid 'A' Performance or Stuck Off",
+    "P0752": "Shift Solenoid 'A' Stuck On",
+    "P0753": "Shift Solenoid 'A' Electrical",
+    "P0756": "Shift Solenoid 'B' Performance or Stuck Off",
+    "P0757": "Shift Solenoid 'B' Stuck On",
+    "P0758": "Shift Solenoid 'B' Electrical",
+    "P0761": "Shift Solenoid 'C' Performance or Stuck Off",
+    "P0868": "Transmission Fluid Pressure Low",
+    "P0894": "Transmission Component Slipping",
+    "P0960": "Pressure Control Solenoid 'A' Control Circuit/Open",
+    "P0962": "Pressure Control Solenoid 'A' Control Circuit Low",
+    "P0963": "Pressure Control Solenoid 'A' Control Circuit High",
     "P0705": "Transmission Range Sensor Circuit (PRNDL Input)",
     "P0715": "Input/Turbine Speed Sensor 'A' Circuit",
     "P0720": "Output Speed Sensor Circuit",
@@ -312,6 +339,33 @@ FAILURE_TYPES = {
     "92": "performance or incorrect operation", "96": "component internal failure",
 }
 
+_FLUID = "Check the transmission fluid level and condition (dark, burnt-smelling or gritty fluid points to internal wear)"
+_TRANS_CAUSES = ["Low, old or burnt transmission fluid", "Faulty shift or pressure-control solenoid / valve body",
+                 "Wiring or connector fault at the transmission", "Internal wear (clutches, bands, torque converter)",
+                 "Transmission computer (TCM) software or fault"]
+for _code in ("P0731", "P0732", "P0733", "P0734", "P0735", "P0736", "P0894", "P0730"):
+    KNOWLEDGE[_code] = ("high", ["Low or burnt transmission fluid", "Worn clutch packs or bands (slipping)",
+                                 "Faulty shift solenoid or valve body", "Low line pressure (pump, filter, regulator)",
+                                 "Speed sensor giving a wrong reading"],
+                        [_FLUID, "Avoid towing and hard acceleration - slipping quickly causes more damage"])
+for _code in ("P0751", "P0752", "P0753", "P0756", "P0757", "P0758", "P0761", "P0750", "P0755",
+              "P0748", "P0960", "P0962", "P0963"):
+    KNOWLEDGE[_code] = ("medium", ["Faulty solenoid (often part of the valve body or solenoid pack)",
+                                   "Damaged wiring or a corroded transmission connector", "Low or dirty fluid",
+                                   "TCM output fault"], [_FLUID, "The transmission may stay in one gear (limp mode)"])
+for _code in ("P0715", "P0717", "P0720", "P0722"):
+    KNOWLEDGE[_code] = ("medium", ["Faulty speed sensor", "Damaged wiring or connector at the sensor",
+                                   "Metal debris on a magnetic sensor tip"],
+                        ["Can cause harsh or wrong shifts, limp mode, and sometimes a dead speedometer"])
+for _code in ("P0711", "P0712", "P0713"):
+    KNOWLEDGE[_code] = ("low", ["Faulty transmission fluid temperature sensor", "Wiring or connector fault",
+                                "Fluid actually running too hot or cold"], [_FLUID])
+KNOWLEDGE["P0218"] = ("high", ["Towing or heavy load in hot weather", "Low fluid", "Blocked transmission cooler",
+                               "Slipping clutches generating heat"],
+                      ["Stop and let the transmission cool; continued overheating destroys transmissions", _FLUID])
+KNOWLEDGE["P0868"] = ("high", ["Low fluid level", "Clogged filter", "Worn pump", "Faulty pressure sensor or regulator"],
+                      [_FLUID, "Low pressure causes slipping - avoid driving far until checked"])
+
 _O2_HEATER = {"P0030", "P0036", "P0050", "P0056", "P0135", "P0141", "P0155", "P0161"}
 
 _SYSTEMS_P0 = {
@@ -408,6 +462,9 @@ def lookup(code: str) -> dict:
         info["manufacturer_specific"] = True
         info["description"] = info["description"] or "Manufacturer-specific code"
         info["tips"] = info["tips"] + [f"Look up '{code}' together with your car's make/model/year"]
+    if not info["causes"] and code[:3] in ("P07", "P08", "P09"):
+        info["causes"] = _TRANS_CAUSES
+        info["tips"] = info["tips"] or [_FLUID]
     if not info["description"] and code.startswith("B00"):
         info.update(description="Restraint system (airbag / seat belt) fault", severity="high",
                     causes=info["causes"] or ["Airbag, seat belt pretensioner or seat sensor circuit fault",

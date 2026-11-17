@@ -203,10 +203,40 @@ def diagnose(scan: dict) -> list[Finding]:
                                       "An ABS light that stays on fails a NZ WoF / Australian roadworthy and many "
                                       "other inspections"],
                              mcodes))
-        else:
+        elif m["system"] != "Transmission":  # transmission codes get their own finding below
             f.append(Finding("medium", f"Codes in another module ({m['label']})",
                              "Codes from a body or chassis module. The meaning of these is often brand-specific.",
                              [], [], mcodes))
+    # Transmission: codes from the transmission computer, or transmission-range codes from any computer
+    trans = sorted({c for m in mods.get("list", []) if m["system"] == "Transmission" for c in
+                    (d["code"] for d in m["dtcs"])} |
+                   {c for c in every if c.split("-")[0][:3] in ("P07", "P08", "P09") or c.startswith("P0218")})
+    if trans:
+        tb = {c.split("-")[0] for c in trans}
+        causes, sev = [], "medium"
+        if tb & {"P0730", "P0731", "P0732", "P0733", "P0734", "P0735", "P0736", "P0894", "P0868"}:
+            causes.append("Slipping or wrong gear ratio - often low/burnt fluid, low pressure or worn clutches")
+            sev = "high"
+        if tb & {"P0218"}:
+            causes.insert(0, "Transmission overheating")
+            sev = "high"
+        if tb & {"P0715", "P0717", "P0720", "P0722"}:
+            causes.append("A transmission speed sensor or its wiring")
+        if tb & {"P0711", "P0712", "P0713"}:
+            causes.append("The transmission fluid temperature sensor or its wiring")
+        if any(c[:4] in ("P075", "P076", "P074", "P096") for c in tb):
+            causes.append("A shift, torque-converter or pressure-control solenoid (or its wiring)")
+        causes += ["Low, old or burnt transmission fluid", "Internal transmission wear"]
+        f.append(Finding(sev, "Transmission fault",
+                         "The transmission computer has detected a problem. It may shift harshly, slip, or lock into "
+                         "one gear to protect itself (\"limp mode\"). Problems caught early - often fluid or a "
+                         "solenoid - are far cheaper than a rebuild.",
+                         list(dict.fromkeys(causes)),
+                         ["Check the transmission fluid level and condition as the owner's manual describes "
+                          "(some transmissions have no dipstick and need a workshop)",
+                          "Avoid towing, heavy loads and hard acceleration until it's checked",
+                          "A transmission specialist can confirm the cause before parts are replaced"], trans))
+
     if mods.get("supported") and not mods.get("list") and not mods.get("searched"):
         f.append(Finding("info", "No ABS or airbag module answered the quick check",
                          "OBD EFT asked the ABS and airbag addresses used by Ford/Mazda, Toyota/Lexus, Hyundai/Kia, "

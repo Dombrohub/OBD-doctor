@@ -30,19 +30,23 @@ class FakeCar:
         self.modules = {
             0x760: {"resp": 0x768, "name": "ABS", "dtcs": [("C0035", 0x1C, 0x89)]},
             0x737: {"resp": 0x73F, "name": "RCM", "dtcs": [("B0001", 0x13, 0x89)]},
+            0x7E1: {"resp": 0x7E9, "name": "TCM", "dtcs": [("P0733", 0x00, 0x09)]},  # gear 3 incorrect ratio
         } if self.profile == "ford" else {}
         # GM GMLAN modules: request id -> codes (code, failure type, status)
         self.gm_modules = {
-            0x243: {"dtcs": [("C0040", 0x1C, 0x08)]},   # EBCM: right front wheel speed sensor
-            0x247: {"dtcs": [("B0001", 0x13, 0x08)]},   # SDM: driver airbag circuit open
+            0x243: {"resp": 0x643, "dtcs": [("C0040", 0x1C, 0x08)]},   # EBCM: right front wheel speed sensor
+            0x247: {"resp": 0x647, "dtcs": [("B0001", 0x13, 0x08)]},   # SDM: driver airbag circuit open
+            0x7E2: {"resp": 0x7EA, "dtcs": [("P0751", 0x00, 0x08)]},   # TCM: shift solenoid A stuck off
         } if self.profile == "gm" else {
-            0x243: {"dtcs": [("C0035", 0x1C, 0x08)]},   # EBCM: left front wheel speed sensor
-            0x247: {"dtcs": [("B0001", 0x13, 0x08)]},   # SDM: driver airbag circuit open
+            0x243: {"resp": 0x643, "dtcs": [("C0035", 0x1C, 0x08)]},   # EBCM: left front wheel speed sensor
+            0x247: {"resp": 0x647, "dtcs": [("B0001", 0x13, 0x08)]},   # SDM: driver airbag circuit open
+            0x7E2: {"resp": 0x7EA, "dtcs": [("P0751", 0x00, 0x08)]},   # TCM: shift solenoid A stuck off
         } if self.profile == "holden" else {}
         # BMW modules by extended address: codes as (hi, mid, low/FTB, status)
         self.bmw_modules = {
             0x29: {"dtcs": [(0x48, 0x0A, 0x20, 0x09)]},                            # DSC
             0x01: {"dtcs": [(0x93, 0x0B, 0x20, 0x09), (0x93, 0x0C, 0x20, 0x08)]},  # ACSM (2 codes: multi-frame)
+            0x18: {"dtcs": [(0x50, 0x0C, 0x20, 0x09)]},                            # EGS (transmission)
         } if self.profile == "bmw" else {}
 
     def handle_gm(self, req_id: int, req: bytes):
@@ -50,15 +54,15 @@ class FakeCar:
         mod = self.gm_modules.get(req_id)
         if not mod or not req:
             return None
+        resp, uudt = mod["resp"], 0x500 | (mod["resp"] & 0xFF)
         if req[0] == 0xA9 and req[1:2] == b"\x81":
-            frames = [(req_id + 0x300, bytes([0x81]) + encode_dtc(c) + bytes([ftb, st, 0, 0]))
-                      for c, ftb, st in mod["dtcs"]]
-            frames.append((req_id + 0x300, bytes([0x81, 0, 0, 0, 0, 0, 0, 0])))  # end of list
+            frames = [(uudt, bytes([0x81]) + encode_dtc(c) + bytes([ftb, st, 0, 0])) for c, ftb, st in mod["dtcs"]]
+            frames.append((uudt, bytes([0x81, 0, 0, 0, 0, 0, 0, 0])))  # end of list
             return "raw", frames
         if req[0] == 0x04:
             mod["dtcs"] = []
-            return "isotp", req_id + 0x400, bytes([0x44])
-        return "isotp", req_id + 0x400, bytes([0x7F, req[0], 0x11])
+            return "isotp", resp, bytes([0x44])
+        return "isotp", resp, bytes([0x7F, req[0], 0x11])
 
     def handle_bmw(self, addr: int, req: bytes):
         mod = self.bmw_modules.get(addr)
@@ -263,7 +267,8 @@ class _Session:
             r = self.car.handle_bmw(self.cea, req) if self.cea is not None else None
             if r:
                 frames = [(f"{0x600 + self.cea:03X}", fr) for fr in _frames_ext(r)]
-        elif self.tx in ("7DF",) or self.tx.startswith("7E"):
+        elif self.tx == "7DF" or (self.tx.startswith("7E") and int(self.tx, 16) not in self.car.modules
+                                       and int(self.tx, 16) not in self.car.gm_modules):
             frames = [(ecu, fr) for ecu, p in self.car.handle(req).items() for fr in _frames(p)]
         elif int(self.tx, 16) in self.car.gm_modules:
             r = self.car.handle_gm(int(self.tx, 16), req)

@@ -29,9 +29,9 @@ Any ELM327 adapter (about $10-30):
 The OBD-II port is under the dashboard on the driver's side. It's on all US cars from 1996 and later,
 EU petrol cars from 2001, and EU diesel cars from 2004.
 
-## ABS and airbag codes
-Standard OBD-II only covers the engine and emissions systems. OBD EFT also asks the **ABS** and **airbag
-(SRS)** computers directly, using the manufacturer-level diagnostic protocol (UDS, ISO 14229, with a
+## ABS, airbag and transmission codes
+Standard OBD-II only covers the engine and emissions systems. OBD EFT also asks the **ABS**, **airbag
+(SRS)** and **transmission (TCM)** computers directly, using the manufacturer-level diagnostic protocol (UDS, ISO 14229, with a
 KWP2000 fallback). This works on most CAN-bus cars, roughly 2008 and newer.
 
 - Every scan includes a **quick check** of the ABS and airbag modules, which takes a few seconds. The VIN
@@ -51,6 +51,9 @@ KWP2000 fallback). This works on most CAN-bus cars, roughly 2008 and newer.
     G-series (2017+) needs an Ethernet connection, which ELM327 adapters can't do
 - If nothing answers, run the **full module search** (the ABS & airbag tab, or `scan --discover`). It probes
   every diagnostic address and reads any module that answers, which takes about a minute.
+- **Transmissions:** most brands' transmission computers are asked at the standard address with UDS; GM and
+  Holden via GMLAN (TCM), BMW via its EGS module. This finds shifting, slipping, solenoid, speed-sensor,
+  pressure and overheating faults that the standard engine scan often misses, and the diagnosis explains them.
 - Codes look like `C0035-1C`. The suffix is the failure type, here "circuit voltage out of range".
 - **Clear ABS/airbag codes** is on the ABS & airbag tab, or use the `clear-modules` command. Airbag modules
   that stored crash data can't be cleared this way.
